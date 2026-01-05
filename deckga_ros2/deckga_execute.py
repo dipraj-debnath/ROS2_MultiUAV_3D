@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # deckga_as2_execute.py
 #
-# Executes DECK-GA + QuickNav paths in Aerostack2
+# Executes DECK-GA paths in Aerostack2
 # Now includes: waypoint printing for debugging
 
 import os
@@ -16,7 +16,7 @@ from as2_python_api.drone_interface import DroneInterface
 # CONFIGURATION
 # -------------------------------------------------------------
 
-DATA_FILE = Path(__file__).resolve().parent / "data" / "deckga_quicknav_output.pkl"
+DATA_FILE = Path(__file__).resolve().parent / "data" / "deckga_output.pkl"
 
 DT = 2.5                  # Slower for safety
 MIN_Z = 2.0
@@ -31,7 +31,7 @@ def load_paths(pkl_path: Path):
     with open(pkl_path, "rb") as f:
         data = pickle.load(f)
 
-    paths = data["quicknav_paths"]
+    paths = data["deckga_paths"]
     while len(paths) < 3:
         paths.append([])
 
@@ -98,7 +98,7 @@ def main():
     print("🔄 Initializing rclpy...")
     rclpy.init()
 
-    print("📦 Loading DECK-GA QuickNav paths...")
+    print("📦 Loading DECK-GA paths...")
     raw_paths = load_paths(DATA_FILE)
     paths = [sanitize_and_scale(p) for p in raw_paths]
 
@@ -113,7 +113,7 @@ def main():
     print("🛫 Taking off all drones to 3.5 m...")
     takeoff_all(drones, height=3.5)
 
-    print("✈️ Executing DECK-GA QuickNav paths (scaled)...")
+    print("✈️ Executing DECK-GA paths (scaled)...")
     go_to_all(drones, paths)
 
     print("🧊 Hovering 3 seconds, then landing...")
