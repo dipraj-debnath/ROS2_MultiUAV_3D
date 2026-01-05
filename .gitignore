@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Generated experiment artifacts (do not commit)
+deckga_ros2/data/deckga_output.pkl
+data/points/*.pkl
