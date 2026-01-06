@@ -12,7 +12,8 @@ matplotlib.rc('font', family='sans-serif')  # Set the font to sans-serif
 POINTS_FILE = "points.pkl"  # Change to "points_100.pkl" to use 100 points
 
 # Load the saved points
-def load_points(filename="points_30.pkl"):
+def load_points(filename="data/points/points_current.pkl"):
+
     """
     Load 3D waypoints from a file.
 

@@ -57,7 +57,7 @@ def parse_start_points(s: str, num_uavs: int) -> np.ndarray:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--points_pkl", default=str(REPO_ROOT / "points.pkl"))
+    ap.add_argument("--points_pkl", default=str(REPO_ROOT / "data" / "points" / "points_current.pkl"))
     ap.add_argument("--num_uavs", type=int, default=3)
     ap.add_argument(
         "--start_points",
