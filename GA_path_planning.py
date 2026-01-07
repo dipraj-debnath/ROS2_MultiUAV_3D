@@ -9,7 +9,8 @@ def ga_3d_pathplanning(xyz):
 
     # Generate distance matrix in 3D
     a = np.meshgrid(np.arange(N), np.arange(N))
-    dmat = np.round(np.sqrt(np.sum((xyz[a[0], :] - xyz[a[1], :])**2, axis=2)))
+    dmat = np.sqrt(np.sum((xyz[a[0], :] - xyz[a[1], :])**2, axis=2))
+
 
     # Sanity checks for population size
     popSize = 4 * int(np.ceil(popSize / 4))
