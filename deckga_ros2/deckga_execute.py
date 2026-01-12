@@ -2,229 +2,418 @@
 """
 deckga_execute.py
 
-Execute DECK-GA paths in Aerostack2 (multi-UAV).
+DECK-GA path execution for Aerostack2 (multi-UAV).
 
-Coordinate mapping (MUST match rviz_paths_node.py):
-- x_cmd = x_raw * SCALE_XY
-- y_cmd = y_raw * SCALE_XY
-- z_cmd = max(Z_MIN, z_raw * SCALE_Z)
+Primary requirement:
+- RViz visualization and execution MUST apply the exact same coordinate transform.
 
-Flight policy:
-- Take off to TAKEOFF_Z (1.0 m by default)
-- Immediately follow DECK-GA waypoints with variable altitude (z_raw * SCALE_Z)
-- Never command z below Z_MIN
+Transform pipeline (must match rviz_paths_node.py):
+    (A) Optional unshift (subtract offset_used) depending on coord_mode
+    (B) Scaling: XY and Z
+    (C) Z offset and Z minimum clamp
 
-Also includes:
-- Dynamic waypoint pacing based on max leg length / speed (+ buffer)
-- Spawn/startpoint sanity check (XY only)
+This version hardcodes the defaults you want so you can run only:
+    python3 deckga_execute.py --deckga_pkl <.../deckga_output.pkl>
+
+Default transform and flight params (match RViz):
+    coord_mode = "original"
+    scale_xy   = 0.05
+    scale_z    = 0.05
+    z_offset   = 2.5
+    z_min      = 3.0
+    takeoff_z  = 3.0
+    takeoff_wait = True
+    speed      = 1.2
 """
 
-import time
+from __future__ import annotations
+
+import argparse
 import pickle
-from pathlib import Path
-from typing import List, Tuple, Optional
+import sys
+import time
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+
 import rclpy
 from as2_python_api.drone_interface import DroneInterface
 
-# -------------------------------------------------------------
-# CONFIGURATION
-# -------------------------------------------------------------
 
-DATA_FILE = Path(__file__).resolve().parent / "data" / "deckga_output.pkl"
+# =========================
+# Hardcoded defaults (match RViz)
+# =========================
 
-FRAME_ID = "earth"
-FLIGHT_SPEED = 1.2  # m/s
+DEFAULT_DECKGA_PKL = "/home/dipraj/Documents/GitHub/ROS2_MultiUAV_3D/deckga_ros2/data/deckga_output.pkl"
 
-# Timing: dynamic sleep = max_leg/speed + TIME_BUFFER, but never below DT_MIN
-DT_MIN = 2.5
-TIME_BUFFER = 1.0
+DEFAULT_COORD_MODE = "original"   # "original" | "shifted" | "auto"
+DEFAULT_SCALE_XY = 0.05
+DEFAULT_SCALE_Z = 0.05
+DEFAULT_Z_OFFSET = 2.5
+DEFAULT_Z_MIN = 3.0               # ensures all commanded Z >= 3m
 
-# Scaling (keep consistent with planning + RViz)
-SCALE_XY = 0.05
-SCALE_Z = 0.05
+DEFAULT_TAKEOFF_Z = 3.0
+DEFAULT_TAKEOFF_WAIT = True
+DEFAULT_SPEED = 1.2
 
-# Altitude policy (what you requested)
-TAKEOFF_Z = 1.0
-Z_MIN = 1.0  # safety clamp (must be >= 0, recommended >= 1.0 in sim)
-
-# Spawn sanity check (AFTER scaling)
-# Matches DECK_GA.py --start_points "10,0,0;50,20,0;90,0,0" with SCALE_XY=0.05
-EXPECTED_SPAWN_XY = [
-    (0.50, 0.00),  # drone0
-    (2.50, 1.00),  # drone1
-    (4.50, 0.00),  # drone2
-]
-SPAWN_WARN_DIST = 1.0  # meters
+DEFAULT_FRAME_ID = "earth"
+DEFAULT_TOPIC = "/deckga/markers"  # not used here, kept for parity/clarity
 
 
-# -------------------------------------------------------------
-# HELPERS
-# -------------------------------------------------------------
+# =========================
+# Transform (shared logic)
+# =========================
 
-def load_paths(pkl_path: Path, num_uavs: int = 3) -> List[np.ndarray]:
-    with open(pkl_path, "rb") as f:
-        data = pickle.load(f)
-
-    paths = data.get("deckga_paths", [])
-    while len(paths) < num_uavs:
-        paths.append([])
-
-    return [np.asarray(p, dtype=float) for p in paths[:num_uavs]]
-
-
-def remove_duplicate_closure(path: np.ndarray) -> np.ndarray:
-    """If first == last (closed tour), remove the last duplicated point."""
-    if path is None or len(path) < 2:
-        return path
-    return path[:-1] if np.allclose(path[0], path[-1]) else path
+def _stack_all_points(paths: Sequence[np.ndarray]) -> np.ndarray:
+    pts: List[np.ndarray] = []
+    for p in paths:
+        if p.size == 0:
+            continue
+        pts.append(p)
+    if not pts:
+        return np.zeros((0, 3), dtype=float)
+    return np.vstack(pts)
 
 
-def sanitize_and_scale(path_xyz: np.ndarray) -> List[Tuple[float, float, float]]:
+def _auto_is_shifted(all_pts: np.ndarray, offset_used: Optional[np.ndarray]) -> bool:
     """
-    XY: scaled by SCALE_XY
-    Z : use DECK-GA z variation (z_raw*SCALE_Z) but clamp at Z_MIN
+    Heuristic:
+      - If all X/Y are non-negative and the mean is noticeably positive relative to offset_used,
+        treat paths as shifted and subtract offset_used once.
     """
-    if path_xyz is None or len(path_xyz) == 0:
-        return []
+    if offset_used is None or all_pts.shape[0] == 0:
+        return False
 
-    path_xyz = remove_duplicate_closure(path_xyz)
+    min_xy = all_pts[:, :2].min(axis=0)
+    mean_xy = all_pts[:, :2].mean(axis=0)
 
-    out: List[Tuple[float, float, float]] = []
-    for p in path_xyz:
-        x = float(p[0]) * SCALE_XY
-        y = float(p[1]) * SCALE_XY
+    if min_xy[0] < -1e-6 or min_xy[1] < -1e-6:
+        return False
 
-        z = float(p[2]) * SCALE_Z
-        if z < Z_MIN:
-            z = Z_MIN
+    return (mean_xy[0] >= 0.20 * offset_used[0]) or (mean_xy[1] >= 0.20 * offset_used[1])
 
-        out.append((x, y, z))
+
+@dataclass(frozen=True)
+class TransformConfig:
+    coord_mode: str           # "original" | "shifted" | "auto"
+    scale_xy: float
+    scale_z: float
+    z_offset: float
+    z_min: float
+
+
+def transform_paths(
+    raw_paths: Sequence[Any],
+    offset_used: Optional[np.ndarray],
+    tf: TransformConfig,
+) -> List[np.ndarray]:
+    """
+    Apply the EXACT same transform used by rviz_paths_node.py.
+
+    Returns:
+        List[np.ndarray], each Nx3 in Gazebo/Aerostack coordinates.
+    """
+    paths_np: List[np.ndarray] = []
+    for p in raw_paths:
+        arr = np.asarray(p, dtype=float)
+        if arr.ndim != 2 or arr.shape[1] != 3:
+            raise ValueError(f"Each path must be Nx3. Got shape {arr.shape}")
+        paths_np.append(arr)
+
+    all_pts = _stack_all_points(paths_np)
+
+    if tf.coord_mode == "shifted":
+        do_unshift = True
+    elif tf.coord_mode == "original":
+        do_unshift = False
+    else:
+        do_unshift = _auto_is_shifted(all_pts, offset_used)
+
+    out: List[np.ndarray] = []
+    for arr in paths_np:
+        a = arr.copy()
+
+        if do_unshift and offset_used is not None:
+            a = a - offset_used
+
+        a[:, 0] *= float(tf.scale_xy)
+        a[:, 1] *= float(tf.scale_xy)
+        a[:, 2] *= float(tf.scale_z)
+
+        a[:, 2] += float(tf.z_offset)
+
+        if float(tf.z_min) > 0.0:
+            a[:, 2] = np.maximum(a[:, 2], float(tf.z_min))
+
+        out.append(a)
 
     return out
 
 
-def check_startpoints_vs_spawn(paths_scaled: List[List[Tuple[float, float, float]]]) -> None:
-    """Warn if first waypoint is far from expected spawn XY."""
-    for i, p in enumerate(paths_scaled):
-        if not p:
-            print(f"[WARN] drone{i}: empty path")
-            continue
-
-        x0, y0, _ = p[0]
-        if i < len(EXPECTED_SPAWN_XY):
-            ex, ey = EXPECTED_SPAWN_XY[i]
-            d = float(((x0 - ex) ** 2 + (y0 - ey) ** 2) ** 0.5)
-            if d > SPAWN_WARN_DIST:
-                print(
-                    f"[WARN] drone{i}: first WP ({x0:.2f},{y0:.2f}) is {d:.2f} m from expected spawn ({ex:.2f},{ey:.2f}).\n"
-                    f"       Fix by aligning DECK_GA --start_points with Aerostack spawn layout\n"
-                    f"       OR update EXPECTED_SPAWN_XY here.\n"
-                )
+def enforce_closed_tour(path: np.ndarray, eps: float = 1e-9) -> np.ndarray:
+    """Ensure the tour ends at the first waypoint (so RViz + execution match)."""
+    if path.size == 0:
+        return path
+    p0 = path[0]
+    pN = path[-1]
+    if np.linalg.norm(p0 - pN) > eps:
+        path = np.vstack([path, p0])
+    return path
 
 
-def takeoff_all(drones: List[DroneInterface], height: float) -> None:
-    for d in drones:
-        d.offboard()
-        d.arm()
-        d.takeoff(height=height, wait=True)
+# =========================
+# IO
+# =========================
+
+def load_deckga_output(path: str) -> Tuple[List[Any], Optional[np.ndarray]]:
+    with open(path, "rb") as f:
+        data: Dict[str, Any] = pickle.load(f)
+
+    if "deckga_paths" not in data:
+        raise KeyError(f"'{path}' missing key 'deckga_paths'. Keys: {list(data.keys())}")
+
+    raw_paths = data["deckga_paths"]
+    offset_used = data.get("offset_used", None)
+
+    if offset_used is not None:
+        offset_used = np.asarray(offset_used, dtype=float).reshape(3,)
+
+    return list(raw_paths), offset_used
 
 
-def compute_step_sleep_seconds(
-    prev_points: List[Optional[Tuple[float, float, float]]],
-    next_points: List[Optional[Tuple[float, float, float]]],
-) -> float:
-    """Dynamic dt = (max distance any drone must travel)/speed + buffer, min DT_MIN."""
-    max_dist = 0.0
-    for a, b in zip(prev_points, next_points):
-        if a is None or b is None:
-            continue
-        ax, ay, az = a
-        bx, by, bz = b
-        dist = float(((bx - ax) ** 2 + (by - ay) ** 2 + (bz - az) ** 2) ** 0.5)
-        max_dist = max(max_dist, dist)
+# =========================
+# Aerostack helpers
+# =========================
 
-    dynamic_dt = (max_dist / max(FLIGHT_SPEED, 1e-6)) + TIME_BUFFER
-    return max(DT_MIN, dynamic_dt)
+def safe_offboard_arm(d: DroneInterface) -> None:
+    d.offboard()
+    d.arm()
 
 
-def go_to_all(drones: List[DroneInterface], paths: List[List[Tuple[float, float, float]]]) -> None:
-    """Issue waypoint k to all drones (wait=False), then sleep sufficiently."""
-    max_len = max((len(p) for p in paths), default=0)
-    if max_len == 0:
-        print("[WARN] No waypoints to execute (all paths empty).")
+def safe_takeoff(d: DroneInterface, height: float, wait: bool) -> None:
+    try:
+        d.takeoff(height=height, wait=wait)
         return
+    except TypeError:
+        pass
 
-    last_cmd: List[Optional[Tuple[float, float, float]]] = [None] * len(drones)
+    try:
+        d.takeoff(height=height)
+        return
+    except TypeError:
+        pass
 
-    for k in range(max_len):
-        next_cmd: List[Optional[Tuple[float, float, float]]] = [None] * len(drones)
-
-        for i, (d, p) in enumerate(zip(drones, paths)):
-            if k < len(p):
-                x, y, z = p[k]
-                next_cmd[i] = (x, y, z)
-
-                print(f"[drone{i}] WP {k+1}/{len(p)} → (x={x:.2f}, y={y:.2f}, z={z:.2f})")
-                d.go_to(
-                    x=x,
-                    y=y,
-                    z=z,
-                    speed=FLIGHT_SPEED,
-                    frame_id=FRAME_ID,
-                    wait=False,
-                )
-
-        time.sleep(compute_step_sleep_seconds(last_cmd, next_cmd))
-        last_cmd = next_cmd
+    d.takeoff(height)
 
 
-def land_all(drones: List[DroneInterface]) -> None:
-    for d in drones:
-        d.land(wait=True)
+def safe_go_to(
+    d: DroneInterface,
+    x: float,
+    y: float,
+    z: float,
+    speed: float,
+    frame_id: str,
+    wait: bool,
+) -> None:
+    try:
+        d.go_to(x=x, y=y, z=z, speed=speed, frame_id=frame_id, wait=wait)
+        return
+    except TypeError:
+        pass
+
+    try:
+        d.go_to(x, y, z, speed=speed, frame_id=frame_id, wait=wait)
+        return
+    except TypeError:
+        pass
+
+    d.go_to(x, y, z)
+
+
+def safe_land_disarm(d: DroneInterface, wait: bool) -> None:
+    try:
+        d.land(wait=wait)
+    except TypeError:
+        try:
+            d.land()
+        except Exception:
+            pass
+    try:
         d.disarm()
+    except Exception:
+        pass
 
 
-# -------------------------------------------------------------
-# MAIN
-# -------------------------------------------------------------
+def shutdown_drone(d: DroneInterface) -> None:
+    try:
+        d.shutdown()
+    except Exception:
+        pass
 
-def main():
+
+# =========================
+# Main
+# =========================
+
+def main() -> None:
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+
+    # You want to run with only --deckga_pkl, so everything else has correct defaults.
+    parser.add_argument("--deckga_pkl", default=DEFAULT_DECKGA_PKL)
+    parser.add_argument("--num_uavs", type=int, default=3)
+    parser.add_argument("--uav_prefix", default="drone")
+
+    # Accept both --frame_id and user-friendly --frame
+    parser.add_argument("--frame_id", default=DEFAULT_FRAME_ID)
+    parser.add_argument("--frame", dest="frame_id", default=argparse.SUPPRESS)
+
+    parser.add_argument(
+        "--coord_mode",
+        default=DEFAULT_COORD_MODE,
+        choices=["auto", "shifted", "original"],
+    )
+
+    # Legacy + new scaling options
+    parser.add_argument("--scale", type=float, default=None, help="Legacy: sets BOTH --scale_xy and --scale_z")
+    parser.add_argument("--scale_xy", type=float, default=DEFAULT_SCALE_XY)
+    parser.add_argument("--scale_z", type=float, default=DEFAULT_SCALE_Z)
+
+    parser.add_argument("--z_offset", type=float, default=DEFAULT_Z_OFFSET)
+    parser.add_argument("--z_min", type=float, default=DEFAULT_Z_MIN)
+
+    parser.add_argument("--takeoff_z", type=float, default=DEFAULT_TAKEOFF_Z)
+    parser.add_argument("--takeoff_wait", action=argparse.BooleanOptionalAction, default=DEFAULT_TAKEOFF_WAIT)
+    parser.add_argument("--init_wait_s", type=float, default=5.0)
+
+    parser.add_argument("--speed", type=float, default=DEFAULT_SPEED)
+    parser.add_argument("--hover_s", type=float, default=2.0)
+
+    # Timing / pacing
+    parser.add_argument("--fixed_dt", action="store_true", help="Disable auto pacing; use constant --dt_s.")
+    parser.add_argument("--dt_s", type=float, default=2.5, help="Fixed dt (if --fixed_dt) or minimum dt (auto).")
+    parser.add_argument("--dt_margin", type=float, default=0.5, help="Extra seconds added in auto pacing.")
+    parser.add_argument("--dt_max", type=float, default=10.0, help="Maximum sleep per step in auto pacing.")
+
+    parser.add_argument("--use_sim_time", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False)
+
+    args = parser.parse_args()
+
+    if args.scale is not None:
+        args.scale_xy = float(args.scale)
+        args.scale_z = float(args.scale)
+
+    tf = TransformConfig(
+        coord_mode=str(args.coord_mode),
+        scale_xy=float(args.scale_xy),
+        scale_z=float(args.scale_z),
+        z_offset=float(args.z_offset),
+        z_min=float(args.z_min),
+    )
+
     print("Initializing rclpy...")
     rclpy.init()
 
-    print("Loading DECK-GA paths...")
-    raw_paths = load_paths(DATA_FILE, num_uavs=3)
-    paths = [sanitize_and_scale(p) for p in raw_paths]
-
-    # Sanity check: startpoints vs spawn layout
-    check_startpoints_vs_spawn(paths)
-
-    print("Creating DroneInterface objects...")
-    drones = [DroneInterface(drone_id=ns, verbose=False, use_sim_time=True) for ns in ["drone0", "drone1", "drone2"]]
-
-    print("Waiting 5 seconds for behavior servers...")
-    time.sleep(5.0)
-
+    drones: List[DroneInterface] = []
     try:
-        print(f"Taking off all drones to {TAKEOFF_Z:.1f} m...")
-        takeoff_all(drones, height=TAKEOFF_Z)
+        print(f"Loading DECK-GA paths: {args.deckga_pkl}")
+        raw_paths, offset_used = load_deckga_output(args.deckga_pkl)
 
-        print("Executing DECK-GA paths (scaled, variable-z)...")
-        go_to_all(drones, paths)
+        paths_m = transform_paths(raw_paths=raw_paths, offset_used=offset_used, tf=tf)
+        paths_m = [enforce_closed_tour(p) for p in paths_m]
 
-        print("Hovering 3 seconds, then landing...")
-        time.sleep(3.0)
-        land_all(drones)
+        if len(paths_m) < args.num_uavs:
+            for _ in range(args.num_uavs - len(paths_m)):
+                paths_m.append(np.zeros((0, 3), dtype=float))
+
+        print("Creating DroneInterface objects...")
+        for i in range(args.num_uavs):
+            ns = f"{args.uav_prefix}{i}"
+            drones.append(
+                DroneInterface(
+                    drone_id=ns,
+                    verbose=bool(args.verbose),
+                    use_sim_time=bool(args.use_sim_time),
+                )
+            )
+
+        print(f"Waiting {args.init_wait_s:.1f} seconds for behavior servers...")
+        time.sleep(float(args.init_wait_s))
+
+        print("Arming + switching to offboard for all drones...")
+        for d in drones:
+            safe_offboard_arm(d)
+
+        print(f"Taking off all drones to {args.takeoff_z:.2f} m (wait={bool(args.takeoff_wait)})...")
+        for d in drones:
+            safe_takeoff(d, height=float(args.takeoff_z), wait=bool(args.takeoff_wait))
+
+        time.sleep(1.0)
+
+        print("Executing DECK-GA paths (execution transform is identical to RViz transform)...")
+        max_len = max((len(p) for p in paths_m), default=0)
+
+        last_sent: List[Optional[np.ndarray]] = [None] * args.num_uavs
+
+        for k in range(max_len):
+            step_dists: List[float] = []
+
+            for i, d in enumerate(drones):
+                p = paths_m[i]
+                if k >= len(p) or len(p) == 0:
+                    continue
+
+                x, y, z = (float(p[k, 0]), float(p[k, 1]), float(p[k, 2]))
+                print(f"[{args.uav_prefix}{i}] WP {k+1}/{len(p)} -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
+
+                safe_go_to(
+                    d,
+                    x=x,
+                    y=y,
+                    z=z,
+                    speed=float(args.speed),
+                    frame_id=str(args.frame_id),
+                    wait=False,
+                )
+
+                prev = last_sent[i]
+                curr = np.array([x, y, z], dtype=float)
+                step_dists.append(0.0 if prev is None else float(np.linalg.norm(curr - prev)))
+                last_sent[i] = curr
+
+            if args.fixed_dt:
+                sleep_s = float(args.dt_s)
+            else:
+                seg_time = (max(step_dists) / max(float(args.speed), 1e-6)) if step_dists else 0.0
+                sleep_s = max(float(args.dt_s), seg_time + float(args.dt_margin))
+                sleep_s = min(sleep_s, float(args.dt_max))
+
+            time.sleep(sleep_s)
+
+        print(f"Hovering {args.hover_s:.2f} seconds, then landing...")
+        time.sleep(float(args.hover_s))
+
+        for d in drones:
+            safe_land_disarm(d, wait=True)
+
+    except KeyboardInterrupt:
+        print("\nInterrupted (Ctrl+C). Attempting safe landing...", file=sys.stderr)
+        for d in drones:
+            try:
+                safe_land_disarm(d, wait=False)
+            except Exception:
+                pass
+        time.sleep(2.0)
 
     finally:
-        print("Shutting down...")
         for d in drones:
-            d.shutdown()
-        rclpy.shutdown()
+            shutdown_drone(d)
 
-    print("Mission complete.")
+        try:
+            rclpy.shutdown()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
