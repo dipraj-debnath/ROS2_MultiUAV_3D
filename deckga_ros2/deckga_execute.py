@@ -58,7 +58,7 @@ import pickle
 import sys
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, cast
 
 import numpy as np
 
@@ -249,26 +249,32 @@ def load_deckga_output(path: str) -> Tuple[List[Any], Optional[np.ndarray]]:
 # =========================
 # Aerostack helpers
 # =========================
+# NOTE on Pylance warnings:
+# Aerostack2 Python API signatures can differ across versions, so these helpers try multiple
+# call patterns. Static type checkers may warn even though runtime is correct.
+# We cast to Any inside helpers to avoid false positives in VS Code.
 
 def safe_offboard_arm(d: DroneInterface) -> None:
-    d.offboard()
-    d.arm()
+    di = cast(Any, d)
+    di.offboard()
+    di.arm()
 
 
 def safe_takeoff(d: DroneInterface, height: float, wait: bool) -> None:
+    di = cast(Any, d)
     try:
-        d.takeoff(height=height, wait=wait)
+        di.takeoff(height=height, wait=wait)
         return
     except TypeError:
         pass
 
     try:
-        d.takeoff(height=height)
+        di.takeoff(height=height)
         return
     except TypeError:
         pass
 
-    d.takeoff(height)
+    di.takeoff(height)
 
 
 def safe_go_to(
@@ -280,38 +286,42 @@ def safe_go_to(
     frame_id: str,
     wait: bool,
 ) -> None:
+    di = cast(Any, d)
     try:
-        d.go_to(x=x, y=y, z=z, speed=speed, frame_id=frame_id, wait=wait)
+        di.go_to(x=x, y=y, z=z, speed=speed, frame_id=frame_id, wait=wait)
         return
     except TypeError:
         pass
 
     try:
-        d.go_to(x, y, z, speed=speed, frame_id=frame_id, wait=wait)
+        di.go_to(x, y, z, speed=speed, frame_id=frame_id, wait=wait)
         return
     except TypeError:
         pass
 
-    d.go_to(x, y, z)
+    # Legacy/older signature fallback
+    di.go_to(x, y, z)
 
 
 def safe_land_disarm(d: DroneInterface, wait: bool) -> None:
+    di = cast(Any, d)
     try:
-        d.land(wait=wait)
+        di.land(wait=wait)
     except TypeError:
         try:
-            d.land()
+            di.land()
         except Exception:
             pass
     try:
-        d.disarm()
+        di.disarm()
     except Exception:
         pass
 
 
 def shutdown_drone(d: DroneInterface) -> None:
+    di = cast(Any, d)
     try:
-        d.shutdown()
+        di.shutdown()
     except Exception:
         pass
 
@@ -424,7 +434,6 @@ def main() -> None:
         # --------------------------
         # Executed timing (Option B)
         # --------------------------
-        # We measure wall-clock time (perf_counter) for each major phase.
         t_exec_start = time.perf_counter()
 
         print("Arming + switching to offboard for all drones...")
@@ -446,15 +455,11 @@ def main() -> None:
 
         last_sent: List[Optional[np.ndarray]] = [None] * args.num_uavs
 
-        # Per-UAV path-phase proxy:
-        # - last_iter_idx[i]: the last global iteration (k) where UAV i received a waypoint command.
-        # - iter_end_times[k]: wall-clock at the end of iteration k (after pacing sleep).
+        # Per-UAV path-phase proxy
         last_iter_idx: List[Optional[int]] = [None] * args.num_uavs
         iter_end_times: List[float] = []
 
-        # Mission completion (recommended metric):
-        # Measure time from first waypoint command to final waypoint command (closed tour).
-        # We record command timestamps per UAV.
+        # Mission completion time (command-level)
         first_wp_cmd_t: List[Optional[float]] = [None] * args.num_uavs
         last_wp_cmd_t: List[Optional[float]] = [None] * args.num_uavs
 
@@ -471,7 +476,6 @@ def main() -> None:
                 x, y, z = (float(p[k, 0]), float(p[k, 1]), float(p[k, 2]))
                 print(f"[{args.uav_prefix}{i}] WP {k+1}/{len(p)} -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
 
-                # We deliberately use wait=False so multiple UAVs progress in parallel.
                 safe_go_to(
                     d,
                     x=x,
@@ -482,25 +486,19 @@ def main() -> None:
                     wait=False,
                 )
 
-                # Timestamp the command issuance for mission completion metric.
+                # Timestamp command issuance
                 t_cmd = time.perf_counter()
                 if first_wp_cmd_t[i] is None:
                     first_wp_cmd_t[i] = t_cmd
                 last_wp_cmd_t[i] = t_cmd
 
-                # Track distances to compute pacing sleep
                 prev = last_sent[i]
                 curr = np.array([x, y, z], dtype=float)
                 step_dists.append(0.0 if prev is None else float(np.linalg.norm(curr - prev)))
                 last_sent[i] = curr
 
-                # Mark this as the most recent iteration where UAV i received a command.
                 last_iter_idx[i] = k
 
-            # Pacing:
-            # - fixed_dt: always sleep dt_s
-            # - auto pacing: sleep at least dt_s and enough time for the slowest segment in this step,
-            #   based on constant speed + margin, clamped to dt_max.
             if args.fixed_dt:
                 sleep_s = float(args.dt_s)
             else:
@@ -526,7 +524,7 @@ def main() -> None:
         t_exec_end = time.perf_counter()
 
         # --------------------------
-        # Executed-time reporting
+        # Reporting
         # --------------------------
         print("\n=== Executed timing (wall-clock) ===")
         print(f"Offboard+arm phase: {_fmt_s(t_arm_end - t_arm_start)}")
@@ -536,30 +534,31 @@ def main() -> None:
         print(f"Landing phase     : {_fmt_s(t_land_end - t_land_start)}")
         print(f"TOTAL (arm->land) : {_fmt_s(t_exec_end - t_exec_start)}")
 
-        # Existing per-UAV path phase proxy (conservative, includes pacing sleep of last iteration):
         if iter_end_times:
             print("\nPer-UAV executed completion time (path phase proxy):")
             per_uav_exec_s: List[float] = []
             for i in range(args.num_uavs):
-                if last_iter_idx[i] is None:
+                idx = last_iter_idx[i]
+                if idx is None:
                     t_i = 0.0
                 else:
-                    t_i = iter_end_times[int(last_iter_idx[i])] - t_paths_start
+                    t_i = iter_end_times[idx] - t_paths_start
                 per_uav_exec_s.append(float(t_i))
                 print(f"UAV {i}: {_fmt_s(t_i)}")
+
             print(f"Executed mission makespan (path phase): {_fmt_s(max(per_uav_exec_s) if per_uav_exec_s else 0.0)}")
         else:
             print("\nPer-UAV executed completion time (path phase proxy): no waypoints were executed.")
 
-        # Recommended mission completion time:
-        # "first waypoint command -> final waypoint command (return-to-start in closed tour)"
         print("\n=== Mission completion time (command-level, no landing) ===")
         mission_times_s: List[float] = []
         for i in range(args.num_uavs):
-            if first_wp_cmd_t[i] is None or last_wp_cmd_t[i] is None:
+            first = first_wp_cmd_t[i]
+            last = last_wp_cmd_t[i]
+            if first is None or last is None:
                 t_m = 0.0
             else:
-                t_m = float(last_wp_cmd_t[i] - first_wp_cmd_t[i])
+                t_m = float(last - first)
             mission_times_s.append(t_m)
             print(f"UAV {i}: {_fmt_s(t_m)}")
 
