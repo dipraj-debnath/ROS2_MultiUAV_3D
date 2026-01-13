@@ -194,6 +194,11 @@ class DeckgaMarkers(Node):
         ma = MarkerArray()
         now = self.get_clock().now().to_msg()
 
+        # Pylance fix:
+        # MarkerArray.markers is typed as a Sequence in stubs, so .append() is not guaranteed.
+        # Build a normal Python list, then assign once to ma.markers.
+        markers: List[Marker] = []
+
         palette = [
             (1.0, 0.0, 0.0),
             (0.0, 1.0, 0.0),
@@ -205,6 +210,8 @@ class DeckgaMarkers(Node):
 
         for i, p in enumerate(self.paths):
             r, g, b = palette[i % len(palette)]
+
+            pts = [Point(x=float(x), y=float(y), z=float(z)) for x, y, z in p.tolist()]
 
             # LINE_STRIP
             m_line = Marker()
@@ -220,8 +227,8 @@ class DeckgaMarkers(Node):
             m_line.color.g = float(g)
             m_line.color.b = float(b)
             m_line.pose.orientation.w = 1.0
-            m_line.points = [Point(x=float(x), y=float(y), z=float(z)) for x, y, z in p.tolist()]
-            ma.markers.append(m_line)
+            m_line.points = pts
+            markers.append(m_line)
 
             # SPHERE_LIST
             m_wp = Marker()
@@ -239,9 +246,10 @@ class DeckgaMarkers(Node):
             m_wp.color.g = float(g)
             m_wp.color.b = float(b)
             m_wp.pose.orientation.w = 1.0
-            m_wp.points = [Point(x=float(x), y=float(y), z=float(z)) for x, y, z in p.tolist()]
-            ma.markers.append(m_wp)
+            m_wp.points = pts
+            markers.append(m_wp)
 
+        ma.markers = markers
         self.pub.publish(ma)
 
 
