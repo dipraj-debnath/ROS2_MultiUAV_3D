@@ -24,6 +24,31 @@ Default transform and flight params (match RViz):
     takeoff_z  = 3.0
     takeoff_wait = True
     speed      = 1.2
+
+Timing instrumentation (for paper/experiments):
+
+A) Planned time (algorithmic / kinematic model):
+    * Uses transformed waypoint path length in meters and constant speed model.
+    * planned_time_uav_i = path_length_i / speed
+    * planned_mission_time = max_i(planned_time_uav_i)  (parallel UAVs => makespan)
+
+B) Executed time (system-level / wall-clock):
+    * Measures real wall-clock time spent in: offboard+arm, takeoff, path execution loop,
+      hover, landing.
+
+C) Mission completion time (recommended metric for experiments):
+    * "Mission complete" is defined as:
+        time from first waypoint command to final waypoint command,
+      where the final waypoint is the return-to-start waypoint (tour is closed).
+    * We report:
+        - Per-UAV mission completion time (command-level): t_last_cmd - t_first_cmd
+        - Mission makespan (parallel UAVs): max over UAVs
+
+Notes:
+- The code uses go_to(wait=False) to keep all UAVs progressing in parallel.
+- These timings are based on command issuance (and pacing sleeps), not exact arrival.
+  If you require exact arrival times per waypoint, you would need go_to(wait=True)
+  (sequentializes behavior) or subscribe to feedback/state and detect convergence to goals.
 """
 
 from __future__ import annotations
@@ -160,6 +185,45 @@ def enforce_closed_tour(path: np.ndarray, eps: float = 1e-9) -> np.ndarray:
     if np.linalg.norm(p0 - pN) > eps:
         path = np.vstack([path, p0])
     return path
+
+
+# =========================
+# Planned-time helpers (kinematic model)
+# =========================
+
+def path_length_m(path: np.ndarray) -> float:
+    """
+    3D polyline length in meters for a single UAV path.
+    Assumes path is already transformed into Gazebo/Aerostack metric coordinates.
+    """
+    if path.size == 0 or len(path) < 2:
+        return 0.0
+    diffs = path[1:] - path[:-1]
+    return float(np.linalg.norm(diffs, axis=1).sum())
+
+
+def planned_times_from_paths(paths_m: Sequence[np.ndarray], speed_mps: float) -> Tuple[List[float], List[float], float]:
+    """
+    Returns:
+      lengths_m: per-UAV path length (m)
+      times_s:   per-UAV planned travel time (s) using constant speed model
+      makespan_s: planned mission makespan (max UAV time) assuming UAVs fly in parallel
+    """
+    v = max(float(speed_mps), 1e-6)
+    lengths = [path_length_m(p) for p in paths_m]
+    times_s = [L / v for L in lengths]
+    makespan = max(times_s) if times_s else 0.0
+    return lengths, times_s, makespan
+
+
+def _fmt_s(seconds: float) -> str:
+    """Human-friendly seconds formatting."""
+    s = float(seconds)
+    if s < 0:
+        s = 0.0
+    if s < 120.0:
+        return f"{s:.2f} s"
+    return f"{s/60.0:.2f} min"
 
 
 # =========================
@@ -320,12 +384,28 @@ def main() -> None:
         print(f"Loading DECK-GA paths: {args.deckga_pkl}")
         raw_paths, offset_used = load_deckga_output(args.deckga_pkl)
 
+        # Transform must match RViz exactly
         paths_m = transform_paths(raw_paths=raw_paths, offset_used=offset_used, tf=tf)
         paths_m = [enforce_closed_tour(p) for p in paths_m]
 
         if len(paths_m) < args.num_uavs:
             for _ in range(args.num_uavs - len(paths_m)):
                 paths_m.append(np.zeros((0, 3), dtype=float))
+
+        # -------------------------
+        # Planned timing (Option A)
+        # -------------------------
+        planned_lengths_m, planned_times_s, planned_makespan_s = planned_times_from_paths(
+            paths_m=paths_m[: args.num_uavs],
+            speed_mps=float(args.speed),
+        )
+
+        print("\n=== Planned timing (kinematic model) ===")
+        print(f"Assumed constant speed: {float(args.speed):.3f} m/s")
+        for i in range(args.num_uavs):
+            print(f"UAV {i}: length={planned_lengths_m[i]:.3f} m, planned_time={_fmt_s(planned_times_s[i])}")
+        print(f"Planned mission makespan (parallel UAVs): {_fmt_s(planned_makespan_s)}")
+        print("=======================================\n")
 
         print("Creating DroneInterface objects...")
         for i in range(args.num_uavs):
@@ -341,20 +421,44 @@ def main() -> None:
         print(f"Waiting {args.init_wait_s:.1f} seconds for behavior servers...")
         time.sleep(float(args.init_wait_s))
 
+        # --------------------------
+        # Executed timing (Option B)
+        # --------------------------
+        # We measure wall-clock time (perf_counter) for each major phase.
+        t_exec_start = time.perf_counter()
+
         print("Arming + switching to offboard for all drones...")
+        t_arm_start = time.perf_counter()
         for d in drones:
             safe_offboard_arm(d)
+        t_arm_end = time.perf_counter()
 
         print(f"Taking off all drones to {args.takeoff_z:.2f} m (wait={bool(args.takeoff_wait)})...")
+        t_takeoff_start = time.perf_counter()
         for d in drones:
             safe_takeoff(d, height=float(args.takeoff_z), wait=bool(args.takeoff_wait))
+        t_takeoff_end = time.perf_counter()
 
         time.sleep(1.0)
 
         print("Executing DECK-GA paths (execution transform is identical to RViz transform)...")
-        max_len = max((len(p) for p in paths_m), default=0)
+        max_len = max((len(p) for p in paths_m[: args.num_uavs]), default=0)
 
         last_sent: List[Optional[np.ndarray]] = [None] * args.num_uavs
+
+        # Per-UAV path-phase proxy:
+        # - last_iter_idx[i]: the last global iteration (k) where UAV i received a waypoint command.
+        # - iter_end_times[k]: wall-clock at the end of iteration k (after pacing sleep).
+        last_iter_idx: List[Optional[int]] = [None] * args.num_uavs
+        iter_end_times: List[float] = []
+
+        # Mission completion (recommended metric):
+        # Measure time from first waypoint command to final waypoint command (closed tour).
+        # We record command timestamps per UAV.
+        first_wp_cmd_t: List[Optional[float]] = [None] * args.num_uavs
+        last_wp_cmd_t: List[Optional[float]] = [None] * args.num_uavs
+
+        t_paths_start = time.perf_counter()
 
         for k in range(max_len):
             step_dists: List[float] = []
@@ -367,6 +471,7 @@ def main() -> None:
                 x, y, z = (float(p[k, 0]), float(p[k, 1]), float(p[k, 2]))
                 print(f"[{args.uav_prefix}{i}] WP {k+1}/{len(p)} -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
 
+                # We deliberately use wait=False so multiple UAVs progress in parallel.
                 safe_go_to(
                     d,
                     x=x,
@@ -377,11 +482,25 @@ def main() -> None:
                     wait=False,
                 )
 
+                # Timestamp the command issuance for mission completion metric.
+                t_cmd = time.perf_counter()
+                if first_wp_cmd_t[i] is None:
+                    first_wp_cmd_t[i] = t_cmd
+                last_wp_cmd_t[i] = t_cmd
+
+                # Track distances to compute pacing sleep
                 prev = last_sent[i]
                 curr = np.array([x, y, z], dtype=float)
                 step_dists.append(0.0 if prev is None else float(np.linalg.norm(curr - prev)))
                 last_sent[i] = curr
 
+                # Mark this as the most recent iteration where UAV i received a command.
+                last_iter_idx[i] = k
+
+            # Pacing:
+            # - fixed_dt: always sleep dt_s
+            # - auto pacing: sleep at least dt_s and enough time for the slowest segment in this step,
+            #   based on constant speed + margin, clamped to dt_max.
             if args.fixed_dt:
                 sleep_s = float(args.dt_s)
             else:
@@ -390,12 +509,63 @@ def main() -> None:
                 sleep_s = min(sleep_s, float(args.dt_max))
 
             time.sleep(sleep_s)
+            iter_end_times.append(time.perf_counter())
+
+        t_paths_end = time.perf_counter()
 
         print(f"Hovering {args.hover_s:.2f} seconds, then landing...")
+        t_hover_start = time.perf_counter()
         time.sleep(float(args.hover_s))
+        t_hover_end = time.perf_counter()
 
+        t_land_start = time.perf_counter()
         for d in drones:
             safe_land_disarm(d, wait=True)
+        t_land_end = time.perf_counter()
+
+        t_exec_end = time.perf_counter()
+
+        # --------------------------
+        # Executed-time reporting
+        # --------------------------
+        print("\n=== Executed timing (wall-clock) ===")
+        print(f"Offboard+arm phase: {_fmt_s(t_arm_end - t_arm_start)}")
+        print(f"Takeoff phase     : {_fmt_s(t_takeoff_end - t_takeoff_start)}")
+        print(f"Path execution    : {_fmt_s(t_paths_end - t_paths_start)}")
+        print(f"Hover phase       : {_fmt_s(t_hover_end - t_hover_start)}")
+        print(f"Landing phase     : {_fmt_s(t_land_end - t_land_start)}")
+        print(f"TOTAL (arm->land) : {_fmt_s(t_exec_end - t_exec_start)}")
+
+        # Existing per-UAV path phase proxy (conservative, includes pacing sleep of last iteration):
+        if iter_end_times:
+            print("\nPer-UAV executed completion time (path phase proxy):")
+            per_uav_exec_s: List[float] = []
+            for i in range(args.num_uavs):
+                if last_iter_idx[i] is None:
+                    t_i = 0.0
+                else:
+                    t_i = iter_end_times[int(last_iter_idx[i])] - t_paths_start
+                per_uav_exec_s.append(float(t_i))
+                print(f"UAV {i}: {_fmt_s(t_i)}")
+            print(f"Executed mission makespan (path phase): {_fmt_s(max(per_uav_exec_s) if per_uav_exec_s else 0.0)}")
+        else:
+            print("\nPer-UAV executed completion time (path phase proxy): no waypoints were executed.")
+
+        # Recommended mission completion time:
+        # "first waypoint command -> final waypoint command (return-to-start in closed tour)"
+        print("\n=== Mission completion time (command-level, no landing) ===")
+        mission_times_s: List[float] = []
+        for i in range(args.num_uavs):
+            if first_wp_cmd_t[i] is None or last_wp_cmd_t[i] is None:
+                t_m = 0.0
+            else:
+                t_m = float(last_wp_cmd_t[i] - first_wp_cmd_t[i])
+            mission_times_s.append(t_m)
+            print(f"UAV {i}: {_fmt_s(t_m)}")
+
+        makespan_cmd = max(mission_times_s) if mission_times_s else 0.0
+        print(f"Mission makespan (parallel UAVs): {_fmt_s(makespan_cmd)}")
+        print("=========================================================\n")
 
     except KeyboardInterrupt:
         print("\nInterrupted (Ctrl+C). Attempting safe landing...", file=sys.stderr)
