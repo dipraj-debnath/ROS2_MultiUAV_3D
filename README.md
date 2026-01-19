@@ -69,14 +69,15 @@ Planner output: deckga_ros2/data/deckga_output.pkl
 
 Figures/logs: results/
 
-Terminal 1 — Start Gazebo + Aerostack (multirotor)
+---
+####  Terminal 1 — Start Gazebo + Aerostack (multirotor)
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
 source /opt/ros/humble/share/aerostack2/local_setup.bash
 ./launch_as2.bash -m
 
 Leave it running.
-
+---
 Terminal 2 — Start Ground Station + RViz
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
