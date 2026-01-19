@@ -71,7 +71,7 @@ Figures/logs: results/
 
 ---
 
-Terminal 1 — Start Gazebo + Aerostack (multirotor)
+### Terminal 1 — Start Gazebo + Aerostack (multirotor)
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
@@ -80,7 +80,7 @@ source /opt/ros/humble/share/aerostack2/local_setup.bash
 
 Leave it running.
 
-Terminal 2 — Start Ground Station + RViz
+### Terminal 2 — Start Ground Station + RViz
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
@@ -89,7 +89,7 @@ source /opt/ros/humble/share/aerostack2/local_setup.bash
 
 Leave it running (RViz should open).
 
-Terminal 3 — Quick verification (nodes + marker topic)
+### Terminal 3 — Quick verification (nodes + marker topic)
 
 Run this before Terminal 4, then repeat after Terminal 4 to confirm /deckga/markers appears.
 
@@ -103,7 +103,7 @@ ros2 node list | egrep "drone|ground|rviz|gazebo|deckga" | head -n 120
 echo "=== Marker topic (should appear after Terminal 4 starts) ==="
 ros2 topic list | grep -E "/deckga/markers" || true
 
-Terminal 4 — Publish DECK-GA paths to RViz (markers)
+### Terminal 4 — Publish DECK-GA paths to RViz (markers)
 
 rviz_paths_node.py is configured so you can run it directly:
 
@@ -115,7 +115,7 @@ python3 ~/Documents/GitHub/ROS2_MultiUAV_3D/deckga_ros2/rviz_paths_node.py
 
 After starting this, return to Terminal 3 and re-run the topic check; you should now see /deckga/markers.
 
-Terminal 5 — Execute (flies the same transformed path)
+### Terminal 5 — Execute (flies the same transformed path)
 
 deckga_execute.py is configured so you only need the .pkl:
 
@@ -128,13 +128,13 @@ python3 ~/Documents/GitHub/ROS2_MultiUAV_3D/deckga_ros2/deckga_execute.py \
 
 Timing outputs (printed by deckga_execute.py)
 
-Planned timing (kinematic model): per-UAV path length / speed and mission makespan
+Planned timing (kinematic model): per-UAV path length/speed and mission makespan
 
 Executed timing (wall-clock): arming, takeoff, path loop, hover, landing
 
 Mission completion time (command-level): first waypoint command → final waypoint command, and makespan
 
-Terminal 6 — Clean stop (end experiment)
+### Terminal 6 — Clean stop (end experiment)
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 ./stop.bash || true
