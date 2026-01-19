@@ -32,7 +32,7 @@ Both **RViz visualization** and **Aerostack execution** apply the **same transfo
 - `z_offset = 2.5`
 - `z_min    = 3.0` (safety clamp)
 
-Meaning: the planner can operate in a larger coordinate range, while the executed/visualized path is scaled down for a better Gazebo/Aerostack flight envelope.
+Meaning: the planner can operate in a larger coordinate range, while the executed/visualised path is scaled down for a better Gazebo/Aerostack flight envelope.
 
 ---
 
