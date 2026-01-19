@@ -72,7 +72,7 @@ Figures/logs: results/
 ---
 
 ### Terminal 1 — Start Gazebo + Aerostack (multirotor)
-```bash
+
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
@@ -82,7 +82,7 @@ source /opt/ros/humble/share/aerostack2/local_setup.bash
 Leave it running.
 
 ### Terminal 2 — Start Ground Station + RViz
-```bash
+
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
@@ -93,8 +93,8 @@ Leave it running (RViz should open).
 
 ### Terminal 3 — Quick verification (nodes + marker topic)
 
-Run this before Terminal 4, then repeat after Terminal 4 to confirm /deckga/markers appears.
-```bash
+Run this before Terminal 4, then repeat after Terminal 4 to confirm /deckga/markers appear.
+
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
@@ -107,7 +107,7 @@ echo "=== Marker topic (should appear after Terminal 4 starts) ==="
 ros2 topic list | grep -E "/deckga/markers" || true
 
 ### Terminal 4 — Publish DECK-GA paths to RViz (markers)
-```bash
+
 rviz_paths_node.py is configured so you can run it directly:
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
@@ -121,7 +121,7 @@ After starting this, return to Terminal 3 and re-run the topic check; you should
 ### Terminal 5 — Execute (flies the same transformed path)
 
 deckga_execute.py is configured so you only need the .pkl:
-```bash
+
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 source /opt/ros/humble/setup.bash
 source /opt/ros/humble/share/aerostack2/local_setup.bash
@@ -138,7 +138,7 @@ Executed timing (wall-clock): arming, takeoff, path loop, hover, landing
 Mission completion time (command-level): first waypoint command → final waypoint command, and makespan
 
 ### Terminal 6 — Clean stop (end experiment)
-```bash
+
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 ./stop.bash || true
 
