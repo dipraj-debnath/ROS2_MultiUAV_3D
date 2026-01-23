@@ -1,0 +1,48 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="aspa135_mini3">
+    <static>true</static>
+    <pose>0 0 0 0 0 0</pose>
+
+    <link name="link">
+      <pose>0 0 0 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <heightmap>
+            <uri>maps/A135_Mini3Pro-DEM-UTM_gr_altfixed_ROI_gz_fx_2049.tif</uri>
+            <size>60.0 60.0 9.01</size>
+            <pos>0.0 0.0 0.0</pos>
+          </heightmap>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <heightmap>
+            <use_terrain_paging>true</use_terrain_paging>
+            <sampling>1</sampling>
+            <texture>
+              <diffuse>materials/textures/ASPA135_Mini3Pro_or_gr_UTM_ROI_gz.png</diffuse>
+              <normal>materials/textures/normal_ASPA135_Mini3Pro_or_gr_UTM_ROI_gz.png</normal>
+              <size>60.0 60.0</size>
+            </texture>
+
+            <uri>maps/A135_Mini3Pro-DEM-UTM_gr_altfixed_ROI_gz_fx_2049.tif</uri>
+            <size>60.0 60.0 9.01</size>
+            <pos>0.0 0.0 0.0</pos>
+          </heightmap>
+        </geometry>
+      </visual>
+
+      <self_collide>0</self_collide>
+      <kinematic>0</kinematic>
+      <gravity>true</gravity>
+      <enable_wind>true</enable_wind>
+    </link>
+      
+    <!-- <joint name="world_joint" type="fixed">
+      <parent>aspa135_m3</parent>
+      <child>main</child>
+    </joint> -->
+
+  </model>
+</sdf>

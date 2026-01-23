@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="aspa135_mini3_thermal_overlay">
+    <static>true</static>
+    <pose>0 0 0.0 0 0 0</pose>  <!-- No rotation needed - mesh is auto-oriented -->
+
+    <link name="thermal_plane">
+      <pose>0 0 0 0 0 0</pose>
+      
+      
+      <!-- No collision geometry - this is purely for thermal overlay -->
+      
+      <visual name="thermal_visual">
+        <cast_shadows>false</cast_shadows>  <!-- Disable shadow casting -->
+        <double_sided>true</double_sided>
+        <geometry>
+          <mesh>
+            <uri>meshes/thermal_plane.dae</uri>
+            <scale>1.0 1.0 1.0</scale>
+          </mesh>
+        </geometry>
+        <!-- I want full transparency -->
+        <material>
+          <transparent>true</transparent>
+          <diffuse>0.0 0.0 0.0 0.0</diffuse>
+          <ambient>0.0 0.0 0.0 0.0</ambient>
+        </material>
+        
+        
+        <!-- Thermal plugin for heat signature -->
+        <plugin
+          filename="gz-sim-thermal-system"
+          name="gz::sim::systems::Thermal">
+          <heat_signature>materials/textures/thermal_ASPA135_Mini3Pro_or_gr_UTM_ROI_gz.png</heat_signature>
+          <min_temp>266.81</min_temp>  <!-- Minimum temperature from thermal data. 266.81K is -6.34C -->
+          <max_temp>296.65</max_temp>  <!-- Maximum temperature from thermal data. 296.65K is 23.5C -->
+          <resolution>3.0</resolution>
+        </plugin>
+      </visual>
+
+      <self_collide>0</self_collide>
+      <kinematic>0</kinematic>  <!-- Static thermal overlay -->
+      <gravity>true</gravity>     <!-- No physics needed -->
+      <enable_wind>true</enable_wind>
+    </link>
+  </model>
+</sdf> 

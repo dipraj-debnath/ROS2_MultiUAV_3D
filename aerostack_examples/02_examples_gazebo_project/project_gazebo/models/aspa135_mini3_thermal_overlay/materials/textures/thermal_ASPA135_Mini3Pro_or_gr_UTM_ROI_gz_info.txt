@@ -1,0 +1,43 @@
+Thermal Map Information
+==================================================
+
+Input Data:
+  Multispectral file: F1_F2_multi_gr_fixed_noalpha_ROI.tif
+  Target diffuse map: ASPA135_Mini3Pro_or_gr_UTM_ROI_gz.png
+  Thermal band number: 6
+  Band count in input: 6
+
+Temperature Statistics (Input Units - Celsius):
+  Minimum temperature: -6.34 °C
+  Maximum temperature: 23.50 °C
+  Mean temperature: 10.98 °C
+  Standard deviation: 6.37 °C
+  Temperature range: 29.84 °C
+
+Temperature Statistics (Kelvin):
+  Minimum temperature: 266.81 K
+  Maximum temperature: 296.65 K
+  Mean temperature: 284.13 K
+  Temperature range: 29.84 K
+
+Normalization Parameters:
+  Normalized min temp: 250.00 K
+  Normalized max temp: 320.00 K
+  Normalized range: 70.00 K
+
+Output Files:
+  GeoTIFF (with CRS): thermal_ASPA135_Mini3Pro_or_gr_UTM_ROI_gz.tif
+  PNG (compatibility): thermal_ASPA135_Mini3Pro_or_gr_UTM_ROI_gz.png
+  Information file: thermal_ASPA135_Mini3Pro_or_gr_UTM_ROI_gz_info.txt
+
+Spatial Information:
+  Output dimensions: 16384 x 16384 pixels
+  Coordinate system: COMPD_CS
+  Pixel size: 0.003662 x 0.003662 units
+
+Processing Information:
+  Processing date: 2025-06-25 16:49:04
+  Script: gazebo_create_thermal_map.py
+  Resampling method: Bilinear
+  PNG conversion method: gdal_translate (CRS preserved)
+  Output format: 8-bit grayscale
