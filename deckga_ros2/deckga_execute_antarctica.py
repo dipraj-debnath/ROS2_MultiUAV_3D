@@ -1,20 +1,40 @@
 #!/usr/bin/env python3
 """
+deckga_execute_antarctica.py
+
 DECK-GA execution for Antarctica world (Gazebo Harmonic + Aerostack2).
 
-What this script guarantees (based on your working logs):
-- Waypoints are executed in EARTH frame and Z is absolute.
-- Takeoff in AS2 Gazebo behaves as ABS Z (earth), not "+relative meters".
-- Default takeoff altitude is kept LOW: min_waypoint_z + small margin.
+This script:
+- Loads DECK-GA output PKL (deckga_paths + offset_used)
+- Applies the Antarctica transform pipeline (auto/original/shifted handling + XY scaling/centering/clamp + Z mapping + z_base)
+- Arms + offboards + takes off
+- Executes multi-UAV waypoint stepping in parallel (go_to(wait=False)) with pacing sleeps
+- Lands
 
-What this version fixes:
-- AS2 services/actions often exist but are not READY immediately after startup.
-  Early arm/offboard/takeoff calls produce "Service returned failure"
-  and then GoTo gets "Goal Rejected".
+Timing instrumentation (for paper/experiments):
 
-So we add:
-- pre-arm warmup wait
-- bounded retry loops (time-based) for offboard+arm, takeoff, and first GoTo
+A) Planned time (algorithmic / kinematic model):
+    * Uses transformed waypoint path length in meters and constant speed model.
+    * planned_time_uav_i = path_length_i / speed
+    * planned_mission_time = max_i(planned_time_uav_i)  (parallel UAVs => makespan)
+
+B) Executed time (system-level / wall-clock):
+    * Measures real wall-clock time spent in: offboard+arm, takeoff, first-WP handshake,
+      path execution loop, hover, landing.
+
+C) Mission completion time (recommended metric for experiments):
+    * "Mission complete" is defined as:
+        time from first waypoint command to final waypoint command
+      (final waypoint is typically the return-to-start waypoint if the tour is closed).
+    * We report:
+        - Per-UAV mission completion time (command-level): t_last_cmd - t_first_cmd
+        - Mission makespan (parallel UAVs): max over UAVs
+
+Notes:
+- The code uses go_to(wait=False) to keep all UAVs progressing in parallel.
+- These timings are based on command issuance (and pacing sleeps), not exact arrival.
+  If you require exact arrival times per waypoint, you would need go_to(wait=True)
+  (sequentializes behavior) or subscribe to feedback/state and detect convergence to goals.
 """
 
 import argparse
@@ -59,92 +79,73 @@ def make_drone_interface(ns: str, use_sim_time: bool, verbose: bool) -> DroneInt
         return DroneInterface(ns)
 
 
-# ----------------------------
-# Robust action/service calls
-# ----------------------------
-def try_offboard(drone: DroneInterface) -> bool:
+def safe_offboard_arm(drone: DroneInterface) -> None:
+    # Offboard
     try:
         drone.offboard()
-        return True
     except Exception:
         try:
             drone.set_offboard_mode()
-            return True
         except Exception:
-            return False
+            pass
 
-
-def try_arm(drone: DroneInterface) -> bool:
+    # Arm
     try:
         drone.arm()
-        return True
     except Exception:
-        return False
+        pass
 
 
-def try_takeoff_abs(drone: DroneInterface, abs_z: float, wait: bool) -> bool:
-    """
-    In your AS2 Gazebo setup, takeoff height behaves like ABS Z in earth frame.
-    """
+def safe_takeoff(drone: DroneInterface, height: float, wait: bool) -> None:
     try:
-        drone.takeoff(height=float(abs_z), wait=bool(wait))
-        return True
+        drone.takeoff(height=float(height), wait=bool(wait))
     except TypeError:
         try:
-            drone.takeoff(height=float(abs_z))
-            return True
+            drone.takeoff(height=float(height))
         except Exception:
-            return False
+            pass
     except Exception:
-        return False
+        pass
 
 
-def try_land(drone: DroneInterface, wait: bool) -> bool:
+def safe_land(drone: DroneInterface, wait: bool) -> None:
     try:
         drone.land(wait=bool(wait))
-        return True
     except TypeError:
         try:
             drone.land()
-            return True
         except Exception:
-            return False
+            pass
     except Exception:
-        return False
+        pass
 
 
-def try_go_to(drone: DroneInterface, x: float, y: float, z: float, speed: float, frame_id: str, wait: bool) -> bool:
+def safe_go_to(
+    drone: DroneInterface,
+    x: float,
+    y: float,
+    z: float,
+    speed: float,
+    frame_id: str,
+    wait: bool,
+) -> bool:
+    """
+    Returns True if the call did not throw TypeError/Exception.
+    (Action may still reject; that will appear in AS2 logs.)
+    """
     try:
         drone.go_to(x=x, y=y, z=z, speed=float(speed), frame_id=str(frame_id), wait=bool(wait))
         return True
     except TypeError:
-        try:
-            drone.go_to(x, y, z, float(speed), str(frame_id), bool(wait))
-            return True
-        except Exception:
-            return False
+        pass
     except Exception:
         return False
 
-
-def retry_until(fn, timeout_s: float, period_s: float, what: str) -> bool:
-    """
-    Retry a function that returns bool until it returns True or timeout.
-    """
-    deadline = time.time() + float(timeout_s)
-    n = 0
-    while time.time() < deadline:
-        n += 1
-        ok = False
-        try:
-            ok = bool(fn())
-        except Exception:
-            ok = False
-        if ok:
-            return True
-        time.sleep(float(period_s))
-    print(f"[WARN] Timeout while trying: {what} (attempts={n})")
-    return False
+    try:
+        drone.go_to(x, y, z, float(speed), str(frame_id), bool(wait))
+        return True
+    except Exception:
+        return False
 
 
 # ----------------------------
@@ -175,6 +176,7 @@ def decide_coord_mode(paths: List[np.ndarray], offset_used: np.ndarray, coord_mo
     if coord_mode != "auto":
         raise ValueError("coord_mode must be one of: auto, original, shifted")
 
+    # Heuristic: if offset_used is non-zero and coords are non-negative -> shifted
     if np.linalg.norm(offset_used[:2]) > 1e-9:
         all_min_xy = min(float(np.min(p[:, :2])) for p in paths) if paths else 0.0
         if all_min_xy >= -1e-6:
@@ -183,6 +185,7 @@ def decide_coord_mode(paths: List[np.ndarray], offset_used: np.ndarray, coord_mo
 
 
 def map_range(v: np.ndarray, in_min: float, in_max: float, out_min: float, out_max: float) -> np.ndarray:
+    # safe linear map with clamp
     v = np.clip(v, in_min, in_max)
     if abs(in_max - in_min) < 1e-9:
         return np.full_like(v, out_min)
@@ -214,18 +217,22 @@ def transform_paths(
     for p in paths:
         q = p.copy()
 
+        # Unshift if needed (bring back to original algorithm coords)
         if mode == "shifted":
             q[:, 0] -= offset_used[0]
             q[:, 1] -= offset_used[1]
             q[:, 2] -= offset_used[2]
 
+        # XY scaling into Antarctica patch, then center shift
         q[:, 0] = q[:, 0] * float(xy_scale) + float(xy_center_x)
         q[:, 1] = q[:, 1] * float(xy_scale) + float(xy_center_y)
 
+        # XY clamp (prevents outside terrain)
         if bool(clamp_xy):
             q[:, 0] = np.clip(q[:, 0], float(x_min), float(x_max))
             q[:, 1] = np.clip(q[:, 1], float(y_min), float(y_max))
 
+        # Z mapping: algorithm Z -> relative band, then add baseline (absolute earth Z)
         rel_z = map_range(q[:, 2], float(zin_min), float(zin_max), float(zout_min), float(zout_max))
         q[:, 2] = rel_z + float(z_base)
 
@@ -234,37 +241,52 @@ def transform_paths(
     return out
 
 
-def print_ranges(paths_m: List[np.ndarray]) -> None:
+def print_ranges(paths_m: List[np.ndarray]) -> Tuple[float, float, float, float, float, float]:
+    """
+    Prints and returns min/max for x/y/z.
+    """
     if not paths_m:
-        return
-    xs = np.concatenate([p[:, 0] for p in paths_m])
-    ys = np.concatenate([p[:, 1] for p in paths_m])
-    zs = np.concatenate([p[:, 2] for p in paths_m])
-    print(
-        f"Final waypoint ranges (meters): "
-        f"x[{xs.min():.2f},{xs.max():.2f}] "
-        f"y[{ys.min():.2f},{ys.max():.2f}] "
-        f"z[{zs.min():.2f},{zs.max():.2f}]"
-    )
+        return (0, 0, 0, 0, 0, 0)
+    xs = np.concatenate([p[:, 0] for p in paths_m if len(p) > 0])
+    ys = np.concatenate([p[:, 1] for p in paths_m if len(p) > 0])
+    zs = np.concatenate([p[:, 2] for p in paths_m if len(p) > 0])
+    xmin, xmax = float(xs.min()), float(xs.max())
+    ymin, ymax = float(ys.min()), float(ys.max())
+    zmin, zmax = float(zs.min()), float(zs.max())
+    print(f"Final waypoint ranges (meters): x[{xmin:.2f},{xmax:.2f}] y[{ymin:.2f},{ymax:.2f}] z[{zmin:.2f},{zmax:.2f}]")
+    return xmin, xmax, ymin, ymax, zmin, zmax
 
 
-def print_planned_timing(paths: List[np.ndarray], speed: float) -> None:
-    print("\n=== Planned timing (kinematic model) ===")
-    print(f"Assumed constant speed: {speed:.3f} m/s")
-    makespan = 0.0
-    for i, p in enumerate(paths):
-        if len(p) < 2:
-            length = 0.0
-        else:
-            segs = p[1:, :] - p[:-1, :]
-            length = float(np.sum(np.linalg.norm(segs, axis=1)))
-        t = length / speed if speed > 1e-9 else float("inf")
-        makespan = max(makespan, t)
-        print(f"UAV {i}: length={length:.3f} m, planned_time={t:.2f} s")
-    print(f"Planned makespan: {makespan:.2f} s")
-    print("======================================\n")
+# ----------------------------
+# Timing helpers
+# ----------------------------
+def path_length_m(path: np.ndarray) -> float:
+    if path.size == 0 or len(path) < 2:
+        return 0.0
+    segs = path[1:, :] - path[:-1, :]
+    return float(np.sum(np.linalg.norm(segs, axis=1)))
 
 
+def planned_times(paths: List[np.ndarray], speed: float) -> Tuple[List[float], List[float], float]:
+    v = max(float(speed), 1e-6)
+    lengths = [path_length_m(p) for p in paths]
+    times_s = [L / v for L in lengths]
+    makespan = max(times_s) if times_s else 0.0
+    return lengths, times_s, makespan
+
+
+def _fmt_s(seconds: float) -> str:
+    s = float(seconds)
+    if s < 0:
+        s = 0.0
+    if s < 120.0:
+        return f"{s:.2f} s"
+    return f"{s/60.0:.2f} min"
+
+
+# ----------------------------
+# Action availability wait
+# ----------------------------
 def wait_for_actions(namespaces: List[str], timeout_s: float) -> None:
     required_suffixes = ("TakeoffBehavior", "GoToBehavior", "LandBehavior")
     deadline = time.time() + float(timeout_s)
@@ -296,16 +318,6 @@ def wait_for_actions(namespaces: List[str], timeout_s: float) -> None:
     print("[WARN] Timeout waiting for actions. Continuing anyway (may cause rejections).")
 
 
-def compute_auto_takeoff_abs_z(paths_m: List[np.ndarray], margin: float) -> float:
-    zs = []
-    for p in paths_m:
-        if len(p) > 0:
-            zs.append(float(np.min(p[:, 2])))
-    if not zs:
-        return 0.0
-    return min(zs) + float(margin)
-
-
 # ----------------------------
 # Main
 # ----------------------------
@@ -316,45 +328,39 @@ def main():
     ap.add_argument("--namespaces", default="drone0,drone1,drone2")
     ap.add_argument("--frame_id", default=DEFAULT_FRAME_ID)
 
+    # Speed
     ap.add_argument("--speed", type=float, default=1.5)
 
+    # Waits
     ap.add_argument("--wait_actions_s", type=float, default=60.0)
     ap.add_argument("--init_wait_s", type=float, default=5.0)
-
-    # ✅ extra warmup AFTER DroneInterfaces exist (this is what you needed in practice)
-    ap.add_argument("--pre_arm_wait_s", type=float, default=8.0)
-
+    ap.add_argument("--pre_arm_wait_s", type=float, default=0.0, help="extra warmup before offboard+arm")
     ap.add_argument("--takeoff_settle_s", type=float, default=6.0)
 
-    # Takeoff (ABS)
-    ap.add_argument("--takeoff_abs_z", type=float, default=None)
-    ap.add_argument("--takeoff_margin", type=float, default=0.20)
+    # Takeoff policy (keep your current working behavior):
+    # Use min waypoint z + margin as ABS takeoff target.
+    ap.add_argument("--takeoff_margin", type=float, default=0.20, help="takeoff_abs_z = min_waypoint_z + margin")
+    ap.add_argument("--takeoff_sequential", action="store_true", help="safer: takeoff wait=True per drone")
 
-    ap.add_argument("--takeoff_sequential", action="store_true")
-    ap.add_argument("--first_wp_wait", action="store_true")
+    # First waypoint handshake
+    ap.add_argument("--first_wp_wait", action="store_true", help="send first GoTo per drone with wait=True (recommended)")
 
-    # Retry controls (time-based, robust)
-    ap.add_argument("--arm_timeout_s", type=float, default=25.0)
-    ap.add_argument("--arm_period_s", type=float, default=1.0)
-
-    ap.add_argument("--takeoff_timeout_s", type=float, default=25.0)
-    ap.add_argument("--takeoff_period_s", type=float, default=1.0)
-
-    ap.add_argument("--first_wp_timeout_s", type=float, default=20.0)
-    ap.add_argument("--first_wp_period_s", type=float, default=1.0)
-
+    # Coord mode
     ap.add_argument("--coord_mode", default="auto", choices=["auto", "original", "shifted"])
 
+    # XY mapping
     ap.add_argument("--xy_scale", type=float, default=1.0)
     ap.add_argument("--xy_center_x", type=float, default=0.0)
     ap.add_argument("--xy_center_y", type=float, default=0.0)
 
+    # XY clamp
     ap.add_argument("--clamp_xy", action="store_true")
     ap.add_argument("--x_min", type=float, default=-30.0)
     ap.add_argument("--x_max", type=float, default=30.0)
     ap.add_argument("--y_min", type=float, default=-30.0)
     ap.add_argument("--y_max", type=float, default=30.0)
 
+    # Z mapping
     ap.add_argument("--zin_min", type=float, default=33.34)
     ap.add_argument("--zin_max", type=float, default=39.30)
     ap.add_argument("--zout_min", type=float, default=1.14)
@@ -375,8 +381,10 @@ def main():
 
     drones: List[DroneInterface] = []
     try:
+        # 1) Wait for actions
         wait_for_actions(namespaces, args.wait_actions_s)
 
+        # 2) Load + transform
         print(f"Loading DECK-GA paths: {args.deckga_pkl}")
         raw_paths, offset_used = load_deckga_pkl(args.deckga_pkl)
         raw_paths = raw_paths[: len(namespaces)]
@@ -400,17 +408,22 @@ def main():
             z_base=args.z_base,
         )
 
-        print_ranges(paths_m)
-        print_planned_timing(paths_m, args.speed)
+        # 3) Print ranges + planned timing (Option A)
+        _, _, _, _, zmin, _ = print_ranges(paths_m)
+        planned_lengths, planned_times_s, planned_makespan = planned_times(paths_m, args.speed)
 
-        # Takeoff altitude
-        if args.takeoff_abs_z is None:
-            takeoff_abs_z = compute_auto_takeoff_abs_z(paths_m, args.takeoff_margin)
-            print(f"Auto takeoff ABS z = min_waypoint_z + margin = {takeoff_abs_z:.2f}")
-        else:
-            takeoff_abs_z = float(args.takeoff_abs_z)
-            print(f"Manual takeoff ABS z = {takeoff_abs_z:.2f}")
+        print("\n=== Planned timing (kinematic model) ===")
+        print(f"Assumed constant speed: {float(args.speed):.3f} m/s")
+        for i in range(len(paths_m)):
+            print(f"UAV {i}: length={planned_lengths[i]:.3f} m, planned_time={_fmt_s(planned_times_s[i])}")
+        print(f"Planned makespan (parallel UAVs): {_fmt_s(planned_makespan)}")
+        print("======================================\n")
 
+        # 4) Takeoff target (keep your current working behavior)
+        takeoff_abs_z = float(zmin) + float(args.takeoff_margin)
+        print(f"Auto takeoff ABS z = min_waypoint_z + margin = {takeoff_abs_z:.2f}")
+
+        # 5) Create interfaces
         print("Creating DroneInterface objects...")
         for ns in namespaces:
             drones.append(make_drone_interface(ns, use_sim_time=args.use_sim_time, verbose=args.verbose))
@@ -418,74 +431,72 @@ def main():
         print(f"Initial settle wait: {args.init_wait_s:.1f}s")
         time.sleep(args.init_wait_s)
 
-        # ✅ Warmup AFTER interfaces exist (reduces the long "service failure" phase)
-        print(f"Pre-arm warmup wait: {args.pre_arm_wait_s:.1f}s")
-        time.sleep(args.pre_arm_wait_s)
+        if args.pre_arm_wait_s > 0.0:
+            print(f"Pre-arm warmup wait: {args.pre_arm_wait_s:.1f}s")
+            time.sleep(args.pre_arm_wait_s)
 
-        # Offboard + arm (robust)
-        print("Switching to offboard + arming (robust retries)...")
-        for i, d in enumerate(drones):
-            ns = namespaces[i]
+        # --------------------------
+        # Executed timing (Option B)
+        # --------------------------
+        t_exec_start = time.perf_counter()
 
-            ok_off = retry_until(lambda: try_offboard(d), args.arm_timeout_s, args.arm_period_s, f"{ns} offboard")
-            ok_arm = retry_until(lambda: try_arm(d), args.arm_timeout_s, args.arm_period_s, f"{ns} arm")
+        # 6) Offboard + arm
+        t_arm_start = time.perf_counter()
+        print("Switching to offboard + arming...")
+        for d in drones:
+            safe_offboard_arm(d)
+        t_arm_end = time.perf_counter()
 
-            if not (ok_off and ok_arm):
-                print(f"[WARN] {ns}: offboard/arm not confirmed within timeout. Continuing; takeoff may still work later.")
-
-        # Takeoff
+        # 7) Takeoff
+        t_takeoff_start = time.perf_counter()
         if args.takeoff_sequential:
             print(f"Taking off SEQUENTIALLY to ABS z={takeoff_abs_z:.2f} ({args.frame_id} frame)...")
-            for i, d in enumerate(drones):
-                ns = namespaces[i]
-                ok_to = retry_until(
-                    lambda d=d: try_takeoff_abs(d, takeoff_abs_z, wait=True),
-                    args.takeoff_timeout_s,
-                    args.takeoff_period_s,
-                    f"{ns} takeoff(abs_z={takeoff_abs_z:.2f})",
-                )
-                if not ok_to:
-                    print(f"[WARN] {ns}: takeoff not confirmed within timeout.")
+            for d in drones:
+                safe_takeoff(d, height=takeoff_abs_z, wait=True)
         else:
             print(f"Taking off ALL drones in parallel to ABS z={takeoff_abs_z:.2f} ({args.frame_id} frame)...")
-            for i, d in enumerate(drones):
-                ns = namespaces[i]
-                retry_until(
-                    lambda d=d: try_takeoff_abs(d, takeoff_abs_z, wait=False),
-                    args.takeoff_timeout_s,
-                    args.takeoff_period_s,
-                    f"{ns} takeoff(abs_z={takeoff_abs_z:.2f})",
-                )
+            for d in drones:
+                safe_takeoff(d, height=takeoff_abs_z, wait=False)
+        t_takeoff_end = time.perf_counter()
 
         time.sleep(args.takeoff_settle_s)
 
-        # Re-assert offboard after takeoff (important in AS2)
+        # Re-assert offboard (kept, non-invasive)
         for d in drones:
-            try_offboard(d)
+            try:
+                d.offboard()
+            except Exception:
+                pass
 
-        # First waypoint handshake (with retries, stops Goal Rejected spam)
+        # 8) First waypoint handshake
+        t_handshake_start = time.perf_counter()
         if args.first_wp_wait:
-            print("First-waypoint handshake (wait=True per drone, with retries)...")
+            print("First-waypoint handshake (wait=True per drone)...")
             for i, d in enumerate(drones):
-                ns = namespaces[i]
                 p = paths_m[i]
                 if len(p) == 0:
                     continue
                 x, y, z = map(float, p[0])
-                print(f"[{ns}] FIRST WP target -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
-
-                retry_until(
-                    lambda d=d, x=x, y=y, z=z: try_go_to(d, x, y, z, args.speed, args.frame_id, wait=True),
-                    args.first_wp_timeout_s,
-                    args.first_wp_period_s,
-                    f"{ns} first GoTo",
-                )
+                print(f"[{namespaces[i]}] FIRST WP (blocking) -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
+                safe_go_to(d, x, y, z, args.speed, args.frame_id, wait=True)
             time.sleep(1.0)
+        t_handshake_end = time.perf_counter()
 
-        # Main execution
+        # 9) Main execution loop
         print("Executing DECK-GA paths (parallel waypoint stepping)...")
         max_len = max((len(p) for p in paths_m), default=0)
+
         last_sent: List[Optional[np.ndarray]] = [None] * len(drones)
+
+        # Mission completion time (Option C): command-level
+        first_wp_cmd_t: List[Optional[float]] = [None] * len(drones)
+        last_wp_cmd_t: List[Optional[float]] = [None] * len(drones)
+
+        # Per-UAV completion proxy for path-phase executed time
+        last_iter_idx: List[Optional[int]] = [None] * len(drones)
+        iter_end_times: List[float] = []
+
+        t_paths_start = time.perf_counter()
 
         for k in range(max_len):
             step_dists: List[float] = []
@@ -497,7 +508,14 @@ def main():
 
                 x, y, z = map(float, p[k])
                 print(f"[{namespaces[i]}] WP {k+1}/{len(p)} -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
-                try_go_to(d, x, y, z, args.speed, args.frame_id, wait=False)
+
+                safe_go_to(d, x, y, z, args.speed, args.frame_id, wait=False)
+
+                # command timestamp
+                t_cmd = time.perf_counter()
+                if first_wp_cmd_t[i] is None:
+                    first_wp_cmd_t[i] = t_cmd
+                last_wp_cmd_t[i] = t_cmd
 
                 if last_sent[i] is None:
                     step_dists.append(0.0)
@@ -505,25 +523,83 @@ def main():
                     step_dists.append(float(np.linalg.norm(np.array([x, y, z]) - last_sent[i])))
                 last_sent[i] = np.array([x, y, z], dtype=float)
 
+                last_iter_idx[i] = k
+
+            # pacing sleep (same as before)
             if step_dists:
                 max_step = max(step_dists)
                 sleep_t = max(0.30, float(max_step / max(args.speed, 1e-6)))
                 time.sleep(sleep_t)
 
+            iter_end_times.append(time.perf_counter())
+
+        t_paths_end = time.perf_counter()
+
+        # 10) Hover + land
         print("Hover 2s...")
+        t_hover_start = time.perf_counter()
         time.sleep(2.0)
+        t_hover_end = time.perf_counter()
 
         print("Landing all drones (non-blocking)...")
+        t_land_start = time.perf_counter()
         for d in drones:
-            try_land(d, wait=False)
-
+            safe_land(d, wait=False)
         time.sleep(3.0)
+        t_land_end = time.perf_counter()
+
+        t_exec_end = time.perf_counter()
+
         print("Done.")
+
+        # --------------------------
+        # Reporting
+        # --------------------------
+        print("\n=== Executed timing (wall-clock) ===")
+        print(f"Offboard+arm phase : {_fmt_s(t_arm_end - t_arm_start)}")
+        print(f"Takeoff phase      : {_fmt_s(t_takeoff_end - t_takeoff_start)}")
+        print(f"1st WP handshake   : {_fmt_s(t_handshake_end - t_handshake_start)}")
+        print(f"Path execution     : {_fmt_s(t_paths_end - t_paths_start)}")
+        print(f"Hover phase        : {_fmt_s(t_hover_end - t_hover_start)}")
+        print(f"Landing phase      : {_fmt_s(t_land_end - t_land_start)}")
+        print(f"TOTAL (arm->land)  : {_fmt_s(t_exec_end - t_exec_start)}")
+
+        if iter_end_times:
+            per_uav_exec_s: List[float] = []
+            print("\nPer-UAV executed completion time (path phase proxy):")
+            for i in range(len(drones)):
+                idx = last_iter_idx[i]
+                if idx is None:
+                    t_i = 0.0
+                else:
+                    # idx corresponds to loop index; iter_end_times holds end time per loop iteration
+                    # clamp to range
+                    idx = min(idx, len(iter_end_times) - 1)
+                    t_i = iter_end_times[idx] - t_paths_start
+                per_uav_exec_s.append(float(t_i))
+                print(f"UAV {i}: {_fmt_s(t_i)}")
+            print(f"Executed mission makespan (path phase): {_fmt_s(max(per_uav_exec_s) if per_uav_exec_s else 0.0)}")
+        else:
+            print("\nPer-UAV executed completion time (path phase proxy): no waypoints executed.")
+
+        print("\n=== Mission completion time (command-level, no landing) ===")
+        mission_times_s: List[float] = []
+        for i in range(len(drones)):
+            first = first_wp_cmd_t[i]
+            last = last_wp_cmd_t[i]
+            if first is None or last is None:
+                t_m = 0.0
+            else:
+                t_m = float(last - first)
+            mission_times_s.append(t_m)
+            print(f"UAV {i}: {_fmt_s(t_m)}")
+        print(f"Mission makespan (parallel UAVs): {_fmt_s(max(mission_times_s) if mission_times_s else 0.0)}")
+        print("=========================================================\n")
 
     except KeyboardInterrupt:
         print("\nInterrupted (Ctrl+C). Best-effort landing...")
         for d in drones:
-            try_land(d, wait=False)
+            safe_land(d, wait=False)
         time.sleep(2.0)
 
     except ExternalShutdownException:
