@@ -40,11 +40,23 @@ This repository supports:
 ## Prerequisites
 
 You need:
-- Ubuntu 22.04
-- ROS2 Humble installed
-- Aerostack2 built/installed in: `~/as2_harmonic_ws`
-- Gazebo (as used by the included Aerostack2 example project)
-- Python3 + common scientific packages (e.g., `numpy`)
+
+- **Ubuntu 22.04**
+- **ROS 2 Humble** installed
+- **Aerostack2** installed and built in an overlay workspace (recommended path: `~/as2_harmonic_ws`)
+  - Official documentation and installation guide: https://aerostack2.github.io/index.html
+  - Typical workflow:
+    ```bash
+    mkdir -p ~/as2_harmonic_ws/src
+    cd ~/as2_harmonic_ws/src
+    # Follow Aerostack2 docs for the correct repository + dependencies
+    # then build:
+    cd ~/as2_harmonic_ws
+    source /opt/ros/humble/setup.bash
+    colcon build --symlink-install
+    ```
+- **Gazebo** (as required by the included Aerostack2 example project)
+- **Python 3** + common scientific packages (e.g., `numpy`)
 
 ### Git LFS (required for Antarctica assets)
 This repo uses **Git LFS** for large Gazebo model assets (e.g., terrain meshes/maps).
