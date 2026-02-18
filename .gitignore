@@ -209,3 +209,13 @@ __marimo__/
 # Generated experiment artifacts (do not commit)
 deckga_ros2/data/deckga_output.pkl
 data/points/*.pkl
+# Runtime outputs
+results/
+results_antarctica/
+results_antarctica_csv/
+
+# Generated planner/execution outputs
+deckga_ros2/data/*_output*.pkl
+deckga_ros2/data/deckga_output_antarctica.pkl
+deckga_ros2/data/load_balancing_dega_output_antarctica.pkl
+deckga_ros2/data/traditional_ga_load_balancing_output_antarctica.pkl
