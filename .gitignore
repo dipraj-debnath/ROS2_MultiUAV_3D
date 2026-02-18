@@ -208,9 +208,23 @@ __marimo__/
 
 # Generated experiment artifacts (do not commit)
 deckga_ros2/data/deckga_output.pkl
-data/points/*.pkl
+
+# Runtime outputs
+results/
+results_antarctica/
+results_antarctica_csv/
+
+# Generated planner/execution outputs
+deckga_ros2/data/*_output*.pkl
+deckga_ros2/data/deckga_output_antarctica.pkl
+deckga_ros2/data/load_balancing_dega_output_antarctica.pkl
+deckga_ros2/data/traditional_ga_load_balancing_output_antarctica.pkl
+
+# INPUT datasets: keep under version control (do NOT ignore these)
+!data/points/*.pkl
 
 # Large Gazebo Antarctica assets (keep local, don't push)
 aerostack_examples/02_examples_gazebo_project/project_gazebo/models/aspa135_mini3_thermal_overlay/meshes/
 aerostack_examples/02_examples_gazebo_project/project_gazebo/models/aspa135_mini3/materials/textures/
 aerostack_examples/02_examples_gazebo_project/project_gazebo/models/aspa135_mini3/maps/
+
