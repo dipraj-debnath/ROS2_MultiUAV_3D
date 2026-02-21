@@ -10,6 +10,11 @@ DECK_GA.py-style behavior:
 - Forces the returned GA tour to START at the start point (important for ROS execution)
 - Ensures closed tour (last == first)
 - Saves output with SAME downstream key: deckga_paths
+
+IMPORTANT:
+Your Load_Balancing.py returns:
+  (uav_assignments_dict, centroids)
+where uav_assignments_dict[uav] is a python list of points.
 """
 
 import argparse
@@ -26,7 +31,7 @@ from Traditional_GA import basic_ga_path_planning
 
 
 # ----------------------------
-# Helpers (DECK-style)
+# Helpers
 # ----------------------------
 def load_points(pkl_path: Path) -> np.ndarray:
     with pkl_path.open("rb") as f:
@@ -95,6 +100,7 @@ def force_start_and_close(path: np.ndarray, start_pt: np.ndarray, atol: float = 
     Make sure:
     - start_pt is the FIRST element
     - tour is CLOSED (last == first)
+
     Works even if GA output doesn't include start_pt.
     """
     path = np.asarray(path, dtype=float)
@@ -135,43 +141,47 @@ def maybe_save_fig(fig, save_dir: Path | None, name: str):
 
 def normalize_lb_output(lb_out, pts_shifted: np.ndarray, num_uavs: int):
     """
-    Normalize load_balancing_clustering() outputs into:
-      clusters: list[np.ndarray] (each Mx3)
-      centroids: (num_uavs,3)
-    Supports common return formats:
-      - (clusters, centroids)
-      - (labels, centroids)
-      - labels only
+    Your Load_Balancing.py returns:
+        (uav_assignments_dict, centroids)
+
+    where:
+        uav_assignments_dict[uav] = [pt0, pt1, ...]  (python lists of 3D points)
+        centroids = np.ndarray (num_uavs, 3)
+
+    This converts to:
+        clusters: list[np.ndarray] where clusters[i] is (Mi,3)
+        centroids: np.ndarray (num_uavs,3)
     """
-    # (A) tuple output
-    if isinstance(lb_out, tuple):
-        if len(lb_out) != 2:
-            raise ValueError("Unexpected tuple output from load_balancing_clustering(). Expected 2 items.")
-        a, b = lb_out
-        a_arr = np.asarray(a)
+    if not isinstance(lb_out, tuple) or len(lb_out) != 2:
+        raise TypeError(
+            f"Expected (assignments_dict, centroids) from load_balancing_clustering, got type={type(lb_out)}"
+        )
 
-        # Heuristic: labels if 1D integer-like
-        if a_arr.ndim == 1 and np.issubdtype(a_arr.dtype, np.integer):
-            labels = a_arr
-            centroids = np.asarray(b, dtype=float)
-            clusters = [pts_shifted[labels == i] for i in range(num_uavs)]
-            return clusters, centroids
+    assignments, centroids = lb_out
 
-        # Otherwise assume clusters
-        clusters = [np.asarray(c, dtype=float) for c in a]
-        centroids = np.asarray(b, dtype=float)
-        return clusters, centroids
+    if not isinstance(assignments, dict):
+        raise TypeError(
+            f"Expected assignments as dict from Load_Balancing.py, got type={type(assignments)}"
+        )
 
-    # (B) labels-only output
-    if isinstance(lb_out, (list, np.ndarray)):
-        labels = np.asarray(lb_out)
-        if labels.ndim != 1:
-            raise ValueError("Unexpected Load_Balancing output format (labels should be 1D).")
-        clusters = [pts_shifted[labels == i] for i in range(num_uavs)]
-        centroids = np.zeros((num_uavs, 3), dtype=float)
-        return clusters, centroids
+    centroids = np.asarray(centroids, dtype=float)
+    if centroids.shape != (num_uavs, 3):
+        # fallback: still allow but warn shape
+        print(f"[WARN] centroids shape unexpected: {centroids.shape}, expected ({num_uavs},3)")
 
-    raise ValueError("Unexpected output type from load_balancing_clustering().")
+    clusters = []
+    for i in range(num_uavs):
+        pts_list = assignments.get(i, [])
+        if pts_list is None:
+            pts_list = []
+        arr = np.asarray(pts_list, dtype=float)
+        if arr.size == 0:
+            arr = np.zeros((0, 3), dtype=float)
+        else:
+            arr = arr.reshape((-1, 3))
+        clusters.append(arr)
+
+    return clusters, centroids
 
 
 # ----------------------------
@@ -219,18 +229,18 @@ def main():
 
     print("\n--- Load Balancing Output ---")
     for i, c in enumerate(clusters):
-        print(f"Cluster {i} size:", len(c))
+        print(f"Cluster {i} size:", int(c.shape[0]))
     print("Centroids:\n", np.asarray(centroids))
     print(f"Load Balancing Time: {cluster_time:.3f} s")
 
+    # Optional clustering plot (shifted)
     if (not args.no_plot) and save_dir is not None:
         fig_cluster = plt.figure(figsize=(4.5, 3.2), dpi=200)
         axc = fig_cluster.add_subplot(111, projection="3d")
         axc.set_title("Load Balancing Clusters (Traditional GA baseline)", fontsize=10)
         colors = cm.rainbow(np.linspace(0, 1, num_uavs))
         for i, c in enumerate(clusters):
-            c = np.asarray(c, dtype=float)
-            if len(c) > 0:
+            if c.shape[0] > 0:
                 axc.scatter(c[:, 0], c[:, 1], c[:, 2], s=10, color=colors[i], label=f"UAV {i}")
         if np.asarray(centroids).shape == (num_uavs, 3):
             axc.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2], s=40, marker="x", label="Centroids")
@@ -239,16 +249,21 @@ def main():
         maybe_save_fig(fig_cluster, save_dir, "traditional_ga_load_balancing_clustering")
         plt.close(fig_cluster)
 
-    # Step 2: Prepend start point per UAV
+    # Step 2: Prepend start point per UAV (cluster may be empty)
     clusters_with_start = []
     for i in range(num_uavs):
-        c = np.asarray(clusters[i], dtype=float)
-        # start + assigned cluster points (cluster might be empty)
-        clusters_with_start.append(np.vstack([start_shifted[i], c]) if len(c) > 0 else np.asarray([start_shifted[i]], dtype=float))
+        c = np.asarray(clusters[i], dtype=float).reshape((-1, 3))
+        if c.shape[0] == 0:
+            clusters_with_start.append(np.asarray([start_shifted[i]], dtype=float))
+        else:
+            clusters_with_start.append(np.vstack([start_shifted[i], c]))
 
-    raw_lengths = [calculate_path_distance(ensure_closed_tour(c)) for c in clusters_with_start]
+    # Raw lengths: closed “start -> points -> start”
+    raw_lengths = []
+    for i, c in enumerate(clusters_with_start):
+        raw_lengths.append(calculate_path_distance(ensure_closed_tour(c)))
 
-    print("\n--- Raw Lengths (start + assigned points, shifted) ---")
+    print("\n--- Raw Lengths (start + assigned points, shifted, closed) ---")
     for i, d in enumerate(raw_lengths):
         print(f"UAV {i}: {d:.3f}")
     print("Total raw:", float(np.sum(raw_lengths)))
@@ -269,7 +284,6 @@ def main():
             print(f"UAV {i} has no assigned waypoints. Length: {ga_lengths[-1]:.3f}")
             continue
 
-        # Traditional GA may expect population_size <= number of points
         pop_size = min(args.population_size, len(cluster_points))
 
         opt = basic_ga_path_planning(
@@ -278,7 +292,7 @@ def main():
             num_iterations=args.num_iterations,
         )
 
-        # CRITICAL: force start at start point and close tour (for ROS execution & RViz)
+        # CRITICAL: force correct start + close tour (for ROS execution)
         opt = force_start_and_close(opt, start_shifted[i], atol=1e-6)
 
         optimized_paths_shifted.append(opt)
@@ -297,11 +311,11 @@ def main():
     # Step 4: Shift paths back to ORIGINAL coordinate space
     deckga_paths = [np.asarray(p, dtype=float) - offset_used for p in optimized_paths_shifted]
 
-    # Step 4.1: Safety check (print first/last)
+    # Sanity
     print("\n--- Path start/stop sanity (original space) ---")
     for i, P in enumerate(deckga_paths):
         P = np.asarray(P, dtype=float)
-        print(f"UAV{i}: n={len(P)}  first={P[0]}  last={P[-1]}")
+        print(f"UAV{i}: n={len(P)} first={P[0]} last={P[-1]}")
 
     # Step 5: Save output
     out = {
@@ -342,6 +356,8 @@ def main():
         colors = cm.rainbow(np.linspace(0, 1, len(deckga_paths)))
         for i, path in enumerate(deckga_paths):
             path = np.asarray(path, dtype=float)
+            if len(path) == 0:
+                continue
             ax.plot(path[:, 0], path[:, 1], path[:, 2], "*-", label=f"UAV {i}", color=colors[i])
             ax.scatter(path[0, 0], path[0, 1], path[0, 2], c="red", s=60, marker="o")
 
