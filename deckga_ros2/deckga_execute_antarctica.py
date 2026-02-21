@@ -4,39 +4,14 @@ deckga_execute_antarctica.py
 
 DECK-GA execution for Antarctica world (Gazebo Harmonic + Aerostack2).
 
-This script:
-- Loads DECK-GA output PKL (deckga_paths + offset_used)
-- Applies the Antarctica transform pipeline (auto/original/shifted handling + XY scaling/centering/clamp + Z mapping + z_base)
-- Arms + offboards + takes off
-- Executes multi-UAV waypoint stepping in parallel (go_to(wait=False)) with pacing sleeps
-- Lands
-
-Timing instrumentation (for paper/experiments):
-
-A) Planned time (algorithmic / kinematic model):
-    * Uses transformed waypoint path length in meters and constant speed model.
-    * planned_time_uav_i = path_length_i / speed
-    * planned_mission_time = max_i(planned_time_uav_i)  (parallel UAVs => makespan)
-
-B) Executed time (system-level / wall-clock):
-    * Measures real wall-clock time spent in: offboard+arm, takeoff, first-WP handshake,
-      path execution loop, hover, landing.
-
-C) Mission completion time (recommended metric for experiments):
-    * "Mission complete" is defined as:
-        time from first waypoint command to final waypoint command.
-    * We report:
-        - Per-UAV mission completion time (command-level): t_last_cmd - t_first_cmd
-        - Mission makespan (parallel UAVs): max over UAVs
-
-CSV logging (for plots):
-- Writes a per-run summary CSV
-- Writes per-UAV waypoint/segment CSVs with per-segment distance + command-level dt
-  (WP1->WP2, WP2->WP3, ...)
+Two execution modes:
+1) Default (existing behavior): go_to(wait=False) + pacing sleeps (command-level timing).
+2) --ensure_reach: per-UAV threaded execution with go_to(wait=True) at every waypoint
+   to guarantee each waypoint is actually reached (action-level completion timing).
 
 Notes:
-- Because go_to(wait=False), segment dt is command-level timing, not exact arrival timing.
-  For exact arrival timing, we would need feedback/state subscriptions.
+- Default mode produces command-level segment dt/dist logs (as before).
+- ensure_reach mode produces completion-level dt/dist logs.
 """
 
 import argparse
@@ -46,6 +21,7 @@ import os
 import pickle
 import subprocess
 import time
+import threading
 from datetime import datetime
 from typing import List, Optional, Tuple, Dict, Any
 
@@ -326,6 +302,56 @@ def wait_for_actions(namespaces: List[str], timeout_s: float) -> None:
 
 
 # ----------------------------
+# ensure-reach worker
+# ----------------------------
+def _uav_worker_wait_each_wp(
+    ns: str,
+    idx: int,
+    drone: DroneInterface,
+    path: np.ndarray,
+    speed: float,
+    frame_id: str,
+    wp_settle_s: float,
+    t0: float,
+    seg_logs_out: List[Dict[str, Any]],
+) -> None:
+    last_xyz = None
+    last_t = None
+    cum = 0.0
+
+    for k in range(len(path)):
+        x, y, z = map(float, path[k])
+        print(f"[{ns}] WP {k+1}/{len(path)} -> (x={x:.2f}, y={y:.2f}, z={z:.2f}) [wait=True]")
+        t_cmd = time.perf_counter()
+        ok = safe_go_to(drone, x, y, z, speed, frame_id, wait=True)
+        t_done = time.perf_counter()
+
+        seg_dist = 0.0 if last_xyz is None else float(np.linalg.norm(np.array([x, y, z]) - last_xyz))
+        seg_dt = 0.0 if last_t is None else float(t_done - last_t)
+
+        cum += seg_dist
+        seg_speed = (seg_dist / seg_dt) if seg_dt > 1e-9 else 0.0
+
+        seg_logs_out.append({
+            "wp_idx": int(k + 1),
+            "x": float(x), "y": float(y), "z": float(z),
+            "cmd_time_s": float(t_cmd - t0),
+            "done_time_s": float(t_done - t0),
+            "seg_dist_m": float(seg_dist),
+            "seg_dt_s": float(seg_dt),
+            "seg_speed_mps": float(seg_speed),
+            "cum_dist_m": float(cum),
+            "ok": bool(ok),
+        })
+
+        last_xyz = np.array([x, y, z], dtype=float)
+        last_t = t_done
+
+        if wp_settle_s > 1e-6:
+            time.sleep(float(wp_settle_s))
+
+
+# ----------------------------
 # Main
 # ----------------------------
 def main():
@@ -335,50 +361,47 @@ def main():
     ap.add_argument("--namespaces", default="drone0,drone1,drone2")
     ap.add_argument("--frame_id", default=DEFAULT_FRAME_ID)
 
-    # Speed
     ap.add_argument("--speed", type=float, default=1.5)
 
-    # Waits
     ap.add_argument("--wait_actions_s", type=float, default=60.0)
     ap.add_argument("--init_wait_s", type=float, default=5.0)
     ap.add_argument("--pre_arm_wait_s", type=float, default=0.0)
     ap.add_argument("--takeoff_settle_s", type=float, default=6.0)
 
-    # Takeoff policy (keep your working behavior)
     ap.add_argument("--takeoff_margin", type=float, default=0.20, help="takeoff_abs_z = min_waypoint_z + margin")
     ap.add_argument("--takeoff_sequential", action="store_true")
 
-    # First waypoint handshake
     ap.add_argument("--first_wp_wait", action="store_true")
 
-    # Coord mode
     ap.add_argument("--coord_mode", default="auto", choices=["auto", "original", "shifted"])
 
-    # XY mapping
     ap.add_argument("--xy_scale", type=float, default=1.0)
     ap.add_argument("--xy_center_x", type=float, default=0.0)
     ap.add_argument("--xy_center_y", type=float, default=0.0)
 
-    # XY clamp
     ap.add_argument("--clamp_xy", action="store_true")
     ap.add_argument("--x_min", type=float, default=-30.0)
     ap.add_argument("--x_max", type=float, default=30.0)
     ap.add_argument("--y_min", type=float, default=-30.0)
     ap.add_argument("--y_max", type=float, default=30.0)
 
-    # Z mapping
     ap.add_argument("--zin_min", type=float, default=33.34)
     ap.add_argument("--zin_max", type=float, default=39.30)
     ap.add_argument("--zout_min", type=float, default=1.14)
     ap.add_argument("--zout_max", type=float, default=7.10)
     ap.add_argument("--z_base", type=float, default=32.2)
 
-    # CSV logger
     ap.add_argument("--log_dir", default="results_antarctica", help="directory to write CSV logs")
     ap.add_argument("--run_tag", default="antarctica", help="string tag included in output filenames")
 
     ap.add_argument("--use_sim_time", action="store_true")
     ap.add_argument("--verbose", action="store_true")
+
+    # Ensure reach
+    ap.add_argument("--ensure_reach", action="store_true",
+                    help="Guarantee each waypoint is reached: per-UAV threads, go_to(wait=True) per waypoint.")
+    ap.add_argument("--wp_settle_s", type=float, default=0.0,
+                    help="Extra settle sleep after each reached waypoint (only with --ensure_reach).")
 
     args = ap.parse_args()
 
@@ -394,10 +417,8 @@ def main():
 
     drones: List[DroneInterface] = []
     try:
-        # 1) Wait for actions
         wait_for_actions(namespaces, args.wait_actions_s)
 
-        # 2) Load + transform
         print(f"Loading DECK-GA paths: {args.deckga_pkl}")
         raw_paths, offset_used = load_deckga_pkl(args.deckga_pkl)
         raw_paths = raw_paths[: len(namespaces)]
@@ -421,7 +442,6 @@ def main():
             z_base=args.z_base,
         )
 
-        # 3) Print ranges + planned timing
         _, _, _, _, zmin, _ = print_ranges(paths_m)
         planned_lengths, planned_times_s, planned_makespan = planned_times(paths_m, args.speed)
 
@@ -432,11 +452,9 @@ def main():
         print(f"Planned makespan (parallel UAVs): {planned_makespan:.2f} s")
         print("======================================\n")
 
-        # 4) Takeoff target
         takeoff_abs_z = float(zmin) + float(args.takeoff_margin)
         print(f"Auto takeoff ABS z = min_waypoint_z + margin = {takeoff_abs_z:.2f}")
 
-        # 5) Create interfaces
         print("Creating DroneInterface objects...")
         for ns in namespaces:
             drones.append(make_drone_interface(ns, use_sim_time=args.use_sim_time, verbose=args.verbose))
@@ -448,19 +466,14 @@ def main():
             print(f"Pre-arm warmup wait: {args.pre_arm_wait_s:.1f}s")
             time.sleep(args.pre_arm_wait_s)
 
-        # --------------------------
-        # Executed timing (wall-clock)
-        # --------------------------
         t_exec_start = time.perf_counter()
 
-        # Offboard + arm
         t_arm_start = time.perf_counter()
         print("Switching to offboard + arming...")
         for d in drones:
             safe_offboard_arm(d)
         t_arm_end = time.perf_counter()
 
-        # Takeoff
         t_takeoff_start = time.perf_counter()
         if args.takeoff_sequential:
             print(f"Taking off SEQUENTIALLY to ABS z={takeoff_abs_z:.2f} ({args.frame_id} frame)...")
@@ -474,14 +487,12 @@ def main():
 
         time.sleep(args.takeoff_settle_s)
 
-        # Re-assert offboard
         for d in drones:
             try:
                 d.offboard()
             except Exception:
                 pass
 
-        # First waypoint handshake
         t_handshake_start = time.perf_counter()
         if args.first_wp_wait:
             print("First-waypoint handshake (wait=True per drone)...")
@@ -495,81 +506,108 @@ def main():
             time.sleep(1.0)
         t_handshake_end = time.perf_counter()
 
-        # Main execution: parallel stepping
-        print("Executing DECK-GA paths (parallel waypoint stepping)...")
-        max_len = max((len(p) for p in paths_m), default=0)
-
-        last_sent: List[Optional[np.ndarray]] = [None] * len(drones)
-
-        # Command-level mission completion (first cmd -> last cmd)
-        first_wp_cmd_t: List[Optional[float]] = [None] * len(drones)
-        last_wp_cmd_t: List[Optional[float]] = [None] * len(drones)
-
-        # Per-UAV segment logs
-        # Each UAV: list of dict rows
-        seg_logs: List[List[Dict[str, Any]]] = [[] for _ in range(len(drones))]
-        cum_dist: List[float] = [0.0 for _ in range(len(drones))]
-        last_cmd_time: List[Optional[float]] = [None for _ in range(len(drones))]
-
+        # -----------------------------------------
+        # Path execution (choose mode)
+        # -----------------------------------------
         t_paths_start = time.perf_counter()
 
-        for k in range(max_len):
-            step_dists: List[float] = []
+        if args.ensure_reach:
+            print("Executing paths with --ensure_reach (per-UAV threads, wait=True per WP)...")
+            t0 = time.perf_counter()
+
+            seg_logs: List[List[Dict[str, Any]]] = [[] for _ in range(len(drones))]
+            threads: List[threading.Thread] = []
 
             for i, d in enumerate(drones):
                 p = paths_m[i]
-                if k >= len(p) or len(p) == 0:
-                    continue
+                th = threading.Thread(
+                    target=_uav_worker_wait_each_wp,
+                    args=(namespaces[i], i, d, p, float(args.speed), str(args.frame_id), float(args.wp_settle_s), t0, seg_logs[i]),
+                    daemon=True,
+                )
+                threads.append(th)
+                th.start()
 
-                x, y, z = map(float, p[k])
-                print(f"[{namespaces[i]}] WP {k+1}/{len(p)} -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
-                safe_go_to(d, x, y, z, args.speed, args.frame_id, wait=False)
+            for th in threads:
+                th.join()
 
-                t_cmd_abs = time.perf_counter()
-                t_cmd_rel = t_cmd_abs - t_paths_start
+            t_paths_end = time.perf_counter()
 
-                # mission completion timestamps (command-level)
-                if first_wp_cmd_t[i] is None:
-                    first_wp_cmd_t[i] = t_cmd_abs
-                last_wp_cmd_t[i] = t_cmd_abs
-
-                # segment distance + dt (command-level)
-                if last_sent[i] is None:
-                    seg_dist = 0.0
+            mission_times_s: List[float] = []
+            for i in range(len(drones)):
+                if not seg_logs[i]:
+                    mission_times_s.append(0.0)
                 else:
-                    seg_dist = float(np.linalg.norm(np.array([x, y, z], dtype=float) - last_sent[i]))
+                    mission_times_s.append(float(seg_logs[i][-1]["done_time_s"] - seg_logs[i][0]["cmd_time_s"]))
+        else:
+            print("Executing DECK-GA paths (parallel waypoint stepping, wait=False)...")
+            max_len = max((len(p) for p in paths_m), default=0)
 
-                if last_cmd_time[i] is None:
-                    seg_dt = 0.0
-                else:
-                    seg_dt = float(t_cmd_abs - last_cmd_time[i])
+            last_sent: List[Optional[np.ndarray]] = [None] * len(drones)
+            first_wp_cmd_t: List[Optional[float]] = [None] * len(drones)
+            last_wp_cmd_t: List[Optional[float]] = [None] * len(drones)
+            seg_logs = [[] for _ in range(len(drones))]
+            cum_dist: List[float] = [0.0 for _ in range(len(drones))]
+            last_cmd_time: List[Optional[float]] = [None for _ in range(len(drones))]
 
-                cum_dist[i] += seg_dist
-                seg_speed_cmd = (seg_dist / seg_dt) if seg_dt > 1e-9 else 0.0
+            for k in range(max_len):
+                step_dists: List[float] = []
 
-                seg_logs[i].append({
-                    "wp_idx": int(k + 1),
-                    "x": float(x),
-                    "y": float(y),
-                    "z": float(z),
-                    "cmd_time_s": float(t_cmd_rel),
-                    "seg_dist_m": float(seg_dist),
-                    "seg_dt_s": float(seg_dt),
-                    "seg_speed_cmd_mps": float(seg_speed_cmd),
-                    "cum_dist_m": float(cum_dist[i]),
-                })
+                for i, d in enumerate(drones):
+                    p = paths_m[i]
+                    if k >= len(p) or len(p) == 0:
+                        continue
 
-                last_cmd_time[i] = t_cmd_abs
-                last_sent[i] = np.array([x, y, z], dtype=float)
-                step_dists.append(seg_dist)
+                    x, y, z = map(float, p[k])
+                    print(f"[{namespaces[i]}] WP {k+1}/{len(p)} -> (x={x:.2f}, y={y:.2f}, z={z:.2f})")
+                    safe_go_to(d, x, y, z, args.speed, args.frame_id, wait=False)
 
-            # pacing sleep proxy for longest step
-            if step_dists:
-                max_step = max(step_dists)
-                sleep_t = max(0.30, float(max_step / max(args.speed, 1e-6)))
-                time.sleep(sleep_t)
+                    t_cmd_abs = time.perf_counter()
+                    t_cmd_rel = t_cmd_abs - t_paths_start
 
-        t_paths_end = time.perf_counter()
+                    if first_wp_cmd_t[i] is None:
+                        first_wp_cmd_t[i] = t_cmd_abs
+                    last_wp_cmd_t[i] = t_cmd_abs
+
+                    if last_sent[i] is None:
+                        seg_dist = 0.0
+                    else:
+                        seg_dist = float(np.linalg.norm(np.array([x, y, z], dtype=float) - last_sent[i]))
+
+                    if last_cmd_time[i] is None:
+                        seg_dt = 0.0
+                    else:
+                        seg_dt = float(t_cmd_abs - last_cmd_time[i])
+
+                    cum_dist[i] += seg_dist
+                    seg_speed_cmd = (seg_dist / seg_dt) if seg_dt > 1e-9 else 0.0
+
+                    seg_logs[i].append({
+                        "wp_idx": int(k + 1),
+                        "x": float(x), "y": float(y), "z": float(z),
+                        "cmd_time_s": float(t_cmd_rel),
+                        "seg_dist_m": float(seg_dist),
+                        "seg_dt_s": float(seg_dt),
+                        "seg_speed_cmd_mps": float(seg_speed_cmd),
+                        "cum_dist_m": float(cum_dist[i]),
+                    })
+
+                    last_cmd_time[i] = t_cmd_abs
+                    last_sent[i] = np.array([x, y, z], dtype=float)
+                    step_dists.append(seg_dist)
+
+                if step_dists:
+                    max_step = max(step_dists)
+                    sleep_t = max(0.30, float(max_step / max(args.speed, 1e-6)))
+                    time.sleep(sleep_t)
+
+            t_paths_end = time.perf_counter()
+
+            mission_times_s = []
+            for i in range(len(drones)):
+                first = first_wp_cmd_t[i]
+                last = last_wp_cmd_t[i]
+                mission_times_s.append(float(last - first) if (first is not None and last is not None) else 0.0)
 
         # Hover + land
         print("Hover 2s...")
@@ -585,12 +623,9 @@ def main():
         t_land_end = time.perf_counter()
 
         t_exec_end = time.perf_counter()
-
         print("Done.")
 
-        # --------------------------
-        # Reporting (console)
-        # --------------------------
+        # Reporting
         print("\n=== Executed timing (wall-clock) ===")
         print(f"Offboard+arm phase : {_fmt_s(t_arm_end - t_arm_start)}")
         print(f"Takeoff phase      : {_fmt_s(t_takeoff_end - t_takeoff_start)}")
@@ -600,26 +635,34 @@ def main():
         print(f"Landing phase      : {_fmt_s(t_land_end - t_land_start)}")
         print(f"TOTAL (arm->land)  : {_fmt_s(t_exec_end - t_exec_start)}")
 
-        print("\n=== Mission completion time (command-level, no landing) ===")
-        mission_times_s: List[float] = []
-        for i in range(len(drones)):
-            first = first_wp_cmd_t[i]
-            last = last_wp_cmd_t[i]
-            if first is None or last is None:
-                t_m = 0.0
-            else:
-                t_m = float(last - first)
-            mission_times_s.append(t_m)
-            print(f"UAV {i}: {_fmt_s(t_m)}")
+        print("\n=== Mission completion time ===")
+        for i, tm in enumerate(mission_times_s):
+            print(f"UAV {i}: {_fmt_s(tm)}")
         mission_makespan = max(mission_times_s) if mission_times_s else 0.0
         print(f"Mission makespan (parallel UAVs): {_fmt_s(mission_makespan)}")
         print("=========================================================\n")
 
-        # --------------------------
+        # -----------------------------
+        # Executed (waypoint-to-waypoint) distances
+        # -----------------------------
+        executed_uav_dists_m: List[float] = []
+        for i in range(len(drones)):
+            if seg_logs is None or len(seg_logs) <= i or len(seg_logs[i]) == 0:
+                executed_uav_dists_m.append(0.0)
+            else:
+                executed_uav_dists_m.append(float(seg_logs[i][-1].get("cum_dist_m", 0.0)))
+
+        executed_total_dist_m = float(np.sum(executed_uav_dists_m))
+
+        print("\n=== Executed (waypoint-to-waypoint) flying distances ===")
+        for i, d_m in enumerate(executed_uav_dists_m):
+            print(f"UAV {i}: {d_m:.3f} m")
+        print(f"TOTAL (sum UAV0..N): {executed_total_dist_m:.3f} m")
+        print("=========================================================\n")
+
         # CSV logging
-        # --------------------------
-        # Summary CSV (one row per run)
         summary_path = os.path.join(args.log_dir, f"run_{args.run_tag}_{run_stamp}_summary.csv")
+
         summary_header = [
             "run_tag", "timestamp",
             "deckga_pkl",
@@ -628,9 +671,19 @@ def main():
             "planned_makespan_s",
             "executed_total_arm_to_land_s",
             "executed_path_phase_s",
-            "mission_makespan_cmd_s",
+            "mission_makespan_s",
             "offboard_arm_s", "takeoff_s", "handshake_s", "hover_s", "landing_s",
+            "ensure_reach",
+            "executed_uav0_dist_m",
+            "executed_uav1_dist_m",
+            "executed_uav2_dist_m",
+            "executed_total_dist_m",
         ]
+
+        d0 = executed_uav_dists_m[0] if len(executed_uav_dists_m) > 0 else 0.0
+        d1 = executed_uav_dists_m[1] if len(executed_uav_dists_m) > 1 else 0.0
+        d2 = executed_uav_dists_m[2] if len(executed_uav_dists_m) > 2 else 0.0
+
         summary_row = [[
             str(args.run_tag),
             str(run_stamp),
@@ -647,24 +700,42 @@ def main():
             float(t_handshake_end - t_handshake_start),
             float(t_hover_end - t_hover_start),
             float(t_land_end - t_land_start),
+            bool(args.ensure_reach),
+            float(d0),
+            float(d1),
+            float(d2),
+            float(executed_total_dist_m),
         ]]
-        write_csv(summary_path, summary_header, summary_row)
 
-        # Per-UAV segment CSVs
+        write_csv(summary_path, summary_header, summary_row)
+        print(f"[LOG] Wrote summary CSV: {summary_path}")
+
+        # Per-UAV CSV
         for i in range(len(drones)):
             uav_path = os.path.join(args.log_dir, f"run_{args.run_tag}_{run_stamp}_uav{i}_segments.csv")
-            header = ["wp_idx", "x", "y", "z", "cmd_time_s", "seg_dist_m", "seg_dt_s", "seg_speed_cmd_mps", "cum_dist_m"]
-            rows: List[List[Any]] = []
-            for r in seg_logs[i]:
-                rows.append([
-                    r["wp_idx"], r["x"], r["y"], r["z"],
-                    r["cmd_time_s"], r["seg_dist_m"], r["seg_dt_s"], r["seg_speed_cmd_mps"], r["cum_dist_m"]
-                ])
-            write_csv(uav_path, header, rows)
 
-        print(f"[LOG] Wrote summary CSV: {summary_path}")
-        for i in range(len(drones)):
-            print(f"[LOG] Wrote UAV{i} segments CSV: {os.path.join(args.log_dir, f'run_{args.run_tag}_{run_stamp}_uav{i}_segments.csv')}")
+            if args.ensure_reach:
+                header = ["wp_idx", "x", "y", "z", "cmd_time_s", "done_time_s", "seg_dist_m", "seg_dt_s",
+                          "seg_speed_mps", "cum_dist_m", "ok"]
+                rows = []
+                for r in seg_logs[i]:
+                    rows.append([
+                        r["wp_idx"], r["x"], r["y"], r["z"],
+                        r["cmd_time_s"], r["done_time_s"],
+                        r["seg_dist_m"], r["seg_dt_s"], r["seg_speed_mps"], r["cum_dist_m"], r["ok"]
+                    ])
+            else:
+                header = ["wp_idx", "x", "y", "z", "cmd_time_s", "seg_dist_m", "seg_dt_s", "seg_speed_cmd_mps",
+                          "cum_dist_m"]
+                rows = []
+                for r in seg_logs[i]:
+                    rows.append([
+                        r["wp_idx"], r["x"], r["y"], r["z"],
+                        r["cmd_time_s"], r["seg_dist_m"], r["seg_dt_s"], r["seg_speed_cmd_mps"], r["cum_dist_m"]
+                    ])
+
+            write_csv(uav_path, header, rows)
+            print(f"[LOG] Wrote UAV{i} segments CSV: {uav_path}")
 
     except KeyboardInterrupt:
         print("\nInterrupted (Ctrl+C). Best-effort landing...")
