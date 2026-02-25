@@ -213,6 +213,7 @@ data/points/*.pkl
 results/
 results_antarctica/
 results_antarctica_csv/
+results_csv
 
 # Generated planner/execution outputs
 deckga_ros2/data/*_output*.pkl
