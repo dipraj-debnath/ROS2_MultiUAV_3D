@@ -55,12 +55,12 @@ print("y:", pts[:,1].min(), pts[:,1].max())
 print("z:", pts[:,2].min(), pts[:,2].max())
 PY
 
-Terminal 2 — Run DECK_GA using the Antarctica waypoint PKL (produces deckga_output_antarctica_60.pkl)
+Terminal 2 — Run DECK_GA using the Antarctica waypoint PKL (produces deckga_output_antarctica_30.pkl)
 
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 
 python3 DECK_GA.py \
-  --points_pkl "data/points/antarctica_aspa135_m3_90_points.pkl" \
+  --points_pkl "data/points/antarctica_aspa135_m3_30_points.pkl" \
   --num_uavs 3 \
   --start_points="5.05,3.24,32.31;5.65,6.10,32.09;6.0,4.5,32.2" \
   --out_pkl "deckga_ros2/data/deckga_output_antarctica_30.pkl" \
