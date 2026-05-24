@@ -170,8 +170,22 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --takeoff_sequential \
   --first_wp_wait \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_120pts_deckga_test_run_1
+  --run_tag aspa135_30pts_deckga_test_run_1
   
+
+Terminal 8: distance measurement 
+
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/drone_pairwise_distance_logger.py \
+  --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose \
+  --msg_type pose_stamped \
+  --rate_hz 10 \
+  --print_every_s 1.0 \
+  --log_dir results_antarctica_csv \
+  --run_tag aspa135_30pts_pairwise_distance_test_run_1
   
 Terminal “Stop/kill” (use when something is stuck)
 # Stop Aerostack2 launch scripts (if project provides it)
