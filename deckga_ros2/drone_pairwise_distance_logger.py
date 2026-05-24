@@ -2,34 +2,48 @@
 """
 drone_pairwise_distance_logger.py
 
-ROS2 live pairwise distance logger for 3 UAVs.
+ROS2 live pairwise distance logger for any number of UAVs.
 
 Purpose:
 - During a multi-UAV Gazebo/Aerostack2 flight, subscribe to each drone pose topic.
-- Compute pairwise Euclidean distances:
-    drone0-drone1
-    drone1-drone2
-    drone0-drone2
+- Compute all pairwise Euclidean distances automatically.
+  Example:
+    2 drones -> 1 pair
+    3 drones -> 3 pairs
+    4 drones -> 6 pairs
+    5 drones -> 10 pairs
 - Save live samples to CSV.
-- Save summary CSV with min/max/mean distances.
+- Save summary CSV with min/mean/max distance for every pair.
 
 Recommended Antarctica topics:
     /drone0/ground_truth/pose
     /drone1/ground_truth/pose
     /drone2/ground_truth/pose
+    ...
 
 Alternative:
     /drone0/self_localization/pose
     /drone1/self_localization/pose
     /drone2/self_localization/pose
+    ...
 
-Example:
+Example for 3 drones:
 python3 deckga_ros2/drone_pairwise_distance_logger.py \
   --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose \
+  --names drone0,drone1,drone2 \
   --msg_type pose_stamped \
   --rate_hz 10 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_90pts_pairwise_distance_test_run_1
+  --run_tag aspa135_90pts_uav3_pairwise_distance_test_run_1
+
+Example for 5 drones:
+python3 deckga_ros2/drone_pairwise_distance_logger.py \
+  --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose,/drone3/ground_truth/pose,/drone4/ground_truth/pose \
+  --names drone0,drone1,drone2,drone3,drone4 \
+  --msg_type pose_stamped \
+  --rate_hz 10 \
+  --log_dir results_antarctica_csv \
+  --run_tag aspa135_90pts_uav5_pairwise_distance_test_run_1
 """
 
 import argparse
@@ -38,6 +52,7 @@ import math
 import os
 import time
 from datetime import datetime
+from itertools import combinations
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -67,6 +82,10 @@ def dist3(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.linalg.norm(a - b))
 
 
+def pair_label(a: str, b: str) -> str:
+    return f"{a}_{b}"
+
+
 class DronePairwiseDistanceLogger(Node):
     def __init__(
         self,
@@ -81,10 +100,14 @@ class DronePairwiseDistanceLogger(Node):
     ):
         super().__init__("drone_pairwise_distance_logger")
 
-        if len(topics) != 3:
-            raise ValueError(f"Expected exactly 3 topics, got {len(topics)}: {topics}")
-        if len(names) != 3:
-            raise ValueError(f"Expected exactly 3 drone names, got {len(names)}: {names}")
+        if len(topics) != len(names):
+            raise ValueError(
+                f"Number of topics must match number of names. "
+                f"Got {len(topics)} topics and {len(names)} names."
+            )
+
+        if len(topics) < 2:
+            raise ValueError("At least 2 drones/topics are required for pairwise distance logging.")
 
         self.topics = topics
         self.names = names
@@ -92,6 +115,9 @@ class DronePairwiseDistanceLogger(Node):
         self.rate_hz = float(rate_hz)
         self.print_every_s = float(print_every_s)
         self.stale_after_s = float(stale_after_s)
+
+        self.pairs: List[Tuple[str, str]] = list(combinations(self.names, 2))
+        self.pair_labels: List[str] = [pair_label(a, b) for a, b in self.pairs]
 
         ensure_dir(log_dir)
         stamp = now_tag()
@@ -104,12 +130,15 @@ class DronePairwiseDistanceLogger(Node):
         self.t0 = time.perf_counter()
         self.last_print = 0.0
 
-        self.d01_values: List[float] = []
-        self.d12_values: List[float] = []
-        self.d02_values: List[float] = []
-        self.min_values: List[float] = []
+        self.pair_values: Dict[str, List[float]] = {label: [] for label in self.pair_labels}
+        self.min_pairwise_values: List[float] = []
+        self.closest_pair_values: List[str] = []
 
-        # Use BEST_EFFORT to match typical Gazebo/self-localization sensor QoS.
+        self.global_min_distance: float = math.inf
+        self.global_min_pair: str = ""
+        self.global_min_time_s: float = 0.0
+
+        # BEST_EFFORT usually matches Gazebo/self-localization sensor QoS.
         # This avoids "incompatible QoS: RELIABILITY" warnings.
         qos = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -121,20 +150,23 @@ class DronePairwiseDistanceLogger(Node):
         self.csv_file = open(self.samples_csv, "w", newline="")
         self.csv_writer = csv.writer(self.csv_file)
 
-        self.csv_writer.writerow([
-            "time_s",
-            f"{self.names[0]}_x", f"{self.names[0]}_y", f"{self.names[0]}_z",
-            f"{self.names[1]}_x", f"{self.names[1]}_y", f"{self.names[1]}_z",
-            f"{self.names[2]}_x", f"{self.names[2]}_y", f"{self.names[2]}_z",
-            f"d_{self.names[0]}_{self.names[1]}_m",
-            f"d_{self.names[1]}_{self.names[2]}_m",
-            f"d_{self.names[0]}_{self.names[2]}_m",
+        header = ["time_s"]
+
+        for name in self.names:
+            header.extend([f"{name}_x", f"{name}_y", f"{name}_z"])
+
+        for label in self.pair_labels:
+            header.append(f"d_{label}_m")
+
+        header.extend([
             "min_pairwise_m",
+            "closest_pair",
             "stale_any",
         ])
+
+        self.csv_writer.writerow(header)
         self.csv_file.flush()
 
-        # Subscriptions
         for idx, topic in enumerate(self.topics):
             name = self.names[idx]
 
@@ -167,6 +199,9 @@ class DronePairwiseDistanceLogger(Node):
         period = 1.0 / max(self.rate_hz, 1e-6)
         self.timer = self.create_timer(period, self.timer_callback)
 
+        self.get_logger().info(f"Number of drones: {len(self.names)}")
+        self.get_logger().info(f"Number of pairwise distances: {len(self.pairs)}")
+        self.get_logger().info(f"Pairs: {self.pair_labels}")
         self.get_logger().info(f"Logging live pairwise distances to: {self.samples_csv}")
         self.get_logger().info(f"Summary will be written to: {self.summary_csv}")
 
@@ -208,100 +243,151 @@ class DronePairwiseDistanceLogger(Node):
                 self.last_print = now
             return
 
-        p0 = self.positions[self.names[0]]
-        p1 = self.positions[self.names[1]]
-        p2 = self.positions[self.names[2]]
-
-        if p0 is None or p1 is None or p2 is None:
-            return
-
-        d01 = dist3(p0, p1)
-        d12 = dist3(p1, p2)
-        d02 = dist3(p0, p2)
-        dmin = min(d01, d12, d02)
         stale = self.stale_any(now)
 
-        self.d01_values.append(d01)
-        self.d12_values.append(d12)
-        self.d02_values.append(d02)
-        self.min_values.append(dmin)
+        row = [f"{t:.6f}"]
 
-        self.csv_writer.writerow([
-            f"{t:.6f}",
-            f"{p0[0]:.6f}", f"{p0[1]:.6f}", f"{p0[2]:.6f}",
-            f"{p1[0]:.6f}", f"{p1[1]:.6f}", f"{p1[2]:.6f}",
-            f"{p2[0]:.6f}", f"{p2[1]:.6f}", f"{p2[2]:.6f}",
-            f"{d01:.6f}",
-            f"{d12:.6f}",
-            f"{d02:.6f}",
-            f"{dmin:.6f}",
+        for name in self.names:
+            p = self.positions[name]
+            if p is None:
+                row.extend(["nan", "nan", "nan"])
+            else:
+                row.extend([f"{p[0]:.6f}", f"{p[1]:.6f}", f"{p[2]:.6f}"])
+
+        pair_distances: Dict[str, float] = {}
+
+        for (a, b), label in zip(self.pairs, self.pair_labels):
+            pa = self.positions[a]
+            pb = self.positions[b]
+
+            if pa is None or pb is None:
+                d = math.nan
+            else:
+                d = dist3(pa, pb)
+
+            pair_distances[label] = d
+            self.pair_values[label].append(d)
+            row.append(f"{d:.6f}" if not math.isnan(d) else "nan")
+
+        valid_distances = {
+            label: d for label, d in pair_distances.items()
+            if not math.isnan(d)
+        }
+
+        if valid_distances:
+            closest_pair = min(valid_distances, key=valid_distances.get)
+            min_pairwise = float(valid_distances[closest_pair])
+        else:
+            closest_pair = ""
+            min_pairwise = math.nan
+
+        self.min_pairwise_values.append(min_pairwise)
+        self.closest_pair_values.append(closest_pair)
+
+        if not math.isnan(min_pairwise) and min_pairwise < self.global_min_distance:
+            self.global_min_distance = min_pairwise
+            self.global_min_pair = closest_pair
+            self.global_min_time_s = t
+
+        row.extend([
+            f"{min_pairwise:.6f}" if not math.isnan(min_pairwise) else "nan",
+            closest_pair,
             int(stale),
         ])
 
-        # Flush often so data is safe even if Ctrl+C happens.
+        self.csv_writer.writerow(row)
         self.csv_file.flush()
 
         if now - self.last_print >= self.print_every_s:
+            distance_text = " | ".join([
+                f"{label}={pair_distances[label]:.3f} m"
+                for label in self.pair_labels
+                if not math.isnan(pair_distances[label])
+            ])
+
             print(
                 f"[{t:8.2f}s] "
-                f"d01={d01:7.3f} m | "
-                f"d12={d12:7.3f} m | "
-                f"d02={d02:7.3f} m | "
-                f"min={dmin:7.3f} m"
+                f"{distance_text} | "
+                f"min={min_pairwise:.3f} m ({closest_pair})"
             )
             self.last_print = now
 
+    def _stats(self, values: List[float]) -> Tuple[float, float, float]:
+        clean = [v for v in values if not math.isnan(v)]
+        if not clean:
+            return (math.nan, math.nan, math.nan)
+        arr = np.asarray(clean, dtype=float)
+        return (float(np.min(arr)), float(np.mean(arr)), float(np.max(arr)))
+
     def write_summary(self) -> None:
-        def stats(values: List[float]) -> Tuple[float, float, float]:
-            if not values:
-                return (math.nan, math.nan, math.nan)
-            arr = np.asarray(values, dtype=float)
-            return (float(np.min(arr)), float(np.mean(arr)), float(np.max(arr)))
-
-        d01_min, d01_mean, d01_max = stats(self.d01_values)
-        d12_min, d12_mean, d12_max = stats(self.d12_values)
-        d02_min, d02_mean, d02_max = stats(self.d02_values)
-        overall_min, overall_mean, overall_max = stats(self.min_values)
-
-        total_samples = len(self.min_values)
+        total_samples = len(self.min_pairwise_values)
         duration_s = time.perf_counter() - self.t0
+
+        summary_header = [
+            "num_drones",
+            "num_pairs",
+            "samples",
+            "duration_s",
+        ]
+
+        summary_row = [
+            int(len(self.names)),
+            int(len(self.pairs)),
+            int(total_samples),
+            f"{duration_s:.6f}",
+        ]
+
+        for label in self.pair_labels:
+            d_min, d_mean, d_max = self._stats(self.pair_values[label])
+            summary_header.extend([
+                f"min_d_{label}_m",
+                f"mean_d_{label}_m",
+                f"max_d_{label}_m",
+            ])
+            summary_row.extend([
+                f"{d_min:.6f}" if not math.isnan(d_min) else "nan",
+                f"{d_mean:.6f}" if not math.isnan(d_mean) else "nan",
+                f"{d_max:.6f}" if not math.isnan(d_max) else "nan",
+            ])
+
+        overall_min, overall_mean, overall_max = self._stats(self.min_pairwise_values)
+
+        summary_header.extend([
+            "overall_min_pairwise_m",
+            "overall_mean_min_pairwise_m",
+            "overall_max_min_pairwise_m",
+            "global_min_pair",
+            "global_min_time_s",
+            "samples_csv",
+        ])
+
+        summary_row.extend([
+            f"{overall_min:.6f}" if not math.isnan(overall_min) else "nan",
+            f"{overall_mean:.6f}" if not math.isnan(overall_mean) else "nan",
+            f"{overall_max:.6f}" if not math.isnan(overall_max) else "nan",
+            self.global_min_pair,
+            f"{self.global_min_time_s:.6f}",
+            self.samples_csv,
+        ])
 
         with open(self.summary_csv, "w", newline="") as f:
             w = csv.writer(f)
-            w.writerow([
-                "samples",
-                "duration_s",
-                f"min_d_{self.names[0]}_{self.names[1]}_m",
-                f"mean_d_{self.names[0]}_{self.names[1]}_m",
-                f"max_d_{self.names[0]}_{self.names[1]}_m",
-                f"min_d_{self.names[1]}_{self.names[2]}_m",
-                f"mean_d_{self.names[1]}_{self.names[2]}_m",
-                f"max_d_{self.names[1]}_{self.names[2]}_m",
-                f"min_d_{self.names[0]}_{self.names[2]}_m",
-                f"mean_d_{self.names[0]}_{self.names[2]}_m",
-                f"max_d_{self.names[0]}_{self.names[2]}_m",
-                "overall_min_pairwise_m",
-                "overall_mean_min_pairwise_m",
-                "overall_max_min_pairwise_m",
-                "samples_csv",
-            ])
-            w.writerow([
-                total_samples,
-                f"{duration_s:.6f}",
-                f"{d01_min:.6f}", f"{d01_mean:.6f}", f"{d01_max:.6f}",
-                f"{d12_min:.6f}", f"{d12_mean:.6f}", f"{d12_max:.6f}",
-                f"{d02_min:.6f}", f"{d02_mean:.6f}", f"{d02_max:.6f}",
-                f"{overall_min:.6f}", f"{overall_mean:.6f}", f"{overall_max:.6f}",
-                self.samples_csv,
-            ])
+            w.writerow(summary_header)
+            w.writerow(summary_row)
 
         print("\n=== Pairwise distance summary ===")
-        print(f"Samples: {total_samples}")
-        print(f"Duration: {duration_s:.2f} s")
-        print(f"{self.names[0]}-{self.names[1]}: min={d01_min:.3f} mean={d01_mean:.3f} max={d01_max:.3f} m")
-        print(f"{self.names[1]}-{self.names[2]}: min={d12_min:.3f} mean={d12_mean:.3f} max={d12_max:.3f} m")
-        print(f"{self.names[0]}-{self.names[2]}: min={d02_min:.3f} mean={d02_mean:.3f} max={d02_max:.3f} m")
+        print(f"Number of drones: {len(self.names)}")
+        print(f"Number of pairs : {len(self.pairs)}")
+        print(f"Samples         : {total_samples}")
+        print(f"Duration        : {duration_s:.2f} s")
+
+        for label in self.pair_labels:
+            d_min, d_mean, d_max = self._stats(self.pair_values[label])
+            print(f"{label}: min={d_min:.3f} mean={d_mean:.3f} max={d_max:.3f} m")
+
         print(f"Overall minimum pairwise distance: {overall_min:.3f} m")
+        print(f"Closest pair at global minimum   : {self.global_min_pair}")
+        print(f"Time of global minimum           : {self.global_min_time_s:.3f} s")
         print(f"[LOG] Samples CSV: {self.samples_csv}")
         print(f"[LOG] Summary CSV: {self.summary_csv}")
 
@@ -319,12 +405,12 @@ def main() -> None:
     parser.add_argument(
         "--topics",
         default="/drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose",
-        help="Comma-separated pose topics for drone0,drone1,drone2.",
+        help="Comma-separated pose topics. Must match --names length.",
     )
     parser.add_argument(
         "--names",
         default="drone0,drone1,drone2",
-        help="Comma-separated names used in CSV headers.",
+        help="Comma-separated drone names used in CSV headers.",
     )
     parser.add_argument(
         "--msg_type",
@@ -344,6 +430,7 @@ def main() -> None:
     names = [x.strip() for x in args.names.split(",") if x.strip()]
 
     rclpy.init()
+
     node = DronePairwiseDistanceLogger(
         topics=topics,
         names=names,
