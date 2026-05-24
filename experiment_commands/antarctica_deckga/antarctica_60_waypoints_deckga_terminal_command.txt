@@ -1,0 +1,189 @@
+Terminal 0 — Convert TXT to PKL + Run DECK_GA
+
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+git checkout antarctica
+git pull origin antarctica
+
+# Convert TXT waypoint file to PKL
+python3 - << 'PY'
+import numpy as np
+import pickle
+from pathlib import Path
+
+txt_in = Path("data/points/antarctica_aspa135_m3_60_points.txt")
+pkl_out = Path("data/points/antarctica_aspa135_m3_60_points.pkl")
+
+pts = np.genfromtxt(txt_in, dtype=float, names=True, delimiter=None)
+xyz = np.vstack([pts["x"], pts["y"], pts["z"]]).T
+
+print("Loaded:", txt_in.resolve())
+print("Shape :", xyz.shape)
+
+mn = xyz.min(axis=0)
+mx = xyz.max(axis=0)
+print(f"Ranges: x[{mn[0]:.2f},{mx[0]:.2f}] y[{mn[1]:.2f},{mx[1]:.2f}] z[{mn[2]:.2f},{mx[2]:.2f}]")
+
+pkl_out.parent.mkdir(parents=True, exist_ok=True)
+with pkl_out.open("wb") as f:
+    pickle.dump(xyz, f)
+
+print("Saved:", pkl_out.resolve())
+PY
+
+Terminal 1: run deckga
+
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+# 1) Confirm the txt exists
+ls -la data/points/antarctica_aspa135_m3_60_points.txt
+head -n 5 data/points/antarctica_aspa135_m3_60_points.txt
+tail -n 5 data/points/antarctica_aspa135_m3_60_points.txt
+
+# 2) Convert TXT -> PKL
+python3 data/points/txt_to_points_pkl.py \
+  --in_txt data/points/antarctica_aspa135_m3_60_points.txt \
+  --out_pkl data/points/antarctica_aspa135_m3_60_points.pkl
+
+# 3) Verify ranges (should match your sheet)
+python3 - << 'PY'
+import pickle, numpy as np
+p="data/points/antarctica_aspa135_m3_60_points.pkl"
+pts=np.array(pickle.load(open(p,"rb")))
+print("shape:", pts.shape)
+print("x:", pts[:,0].min(), pts[:,0].max())
+print("y:", pts[:,1].min(), pts[:,1].max())
+print("z:", pts[:,2].min(), pts[:,2].max())
+PY
+
+
+Terminal 2 — Run DECK_GA using the Antarctica waypoint PKL (produces deckga_output_antarctica_60.pkl)
+
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+python3 DECK_GA.py \
+  --points_pkl "data/points/antarctica_aspa135_m3_60_points.pkl" \
+  --num_uavs 3 \
+  --start_points="5.05,3.24,32.31;5.65,6.10,32.09;6.0,4.5,32.2" \
+  --out_pkl "deckga_ros2/data/deckga_output_antarctica_60.pkl" \
+  --save_fig_dir "results_antarctica"
+
+# Sanity check output PKL
+python3 - << 'PY'
+import pickle
+import numpy as np
+
+p = "deckga_ros2/data/deckga_output_antarctica_60.pkl"
+d = pickle.load(open(p, "rb"))
+
+print("PKL:", p)
+print("Keys:", sorted(d.keys()))
+for i, P in enumerate(d["deckga_paths"]):
+    P = np.asarray(P)
+    print(f"UAV{i}: n={len(P)} first={P[0]} last={P[-1]}")
+PY
+
+Terminal 3 — Launch Aerostack2 + Gazebo swarm (Antarctica)
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+source ./setup_antarctica_env.bash
+
+./launch_as2.bash -m
+
+Leave this terminal running.
+
+
+Terminal 4 — Ground station / RViz (3 drones)
+
+(Your corrected RViz launch)
+
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+source ./setup_antarctica_env.bash
+
+./launch_ground_station.bash -m -t -v
+
+Terminal 5 — Quick sanity: actions exist for all drones
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+echo "=== Drone nodes ==="
+ros2 node list | egrep "drone0|drone1|drone2|ground|rviz|gazebo" | head -n 200
+
+echo "=== Actions ==="
+ros2 action list | sort | egrep "/drone[0-2]/(TakeoffBehavior|GoToBehavior|LandBehavior|FollowPathBehavior)" || true
+
+echo "=== Marker topic will appear after Terminal 4 starts ==="
+ros2 topic list | grep -E "/deckga/markers" || true
+
+Terminal 6 — Publish DECK-GA paths in RViz (thicker lines)
+
+
+
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/rviz_paths_node_antarctica.py \
+  --deckga_pkl deckga_ros2/data/deckga_output_antarctica_60.pkl \
+  --coord_mode auto \
+  --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
+  --zin_min 32.34 --zin_max 41.30 \
+  --zout_min 0.14 --zout_max 9.10 \
+  --z_base 32.2 \
+  --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
+  --line_width 0.25 --wp_scale 0.45
+  
+  
+Terminal 7 — Execute flight (stable sequencing + first waypoint handshake) @ speed 1.5
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+
+python3 deckga_ros2/deckga_execute_antarctica.py \
+  --deckga_pkl deckga_ros2/data/deckga_output_antarctica_60.pkl \
+  --coord_mode auto \
+  --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
+  --zin_min 32.34 --zin_max 41.30 \
+  --zout_min 0.14 --zout_max 9.10 \
+  --z_base 32.2 \
+  --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
+  --takeoff_margin 0.10 \
+  --pre_arm_wait_s 12 \
+  --speed 1.5 \
+  --wait_actions_s 60 \
+  --init_wait_s 5 \
+  --takeoff_settle_s 6 \
+  --takeoff_sequential \
+  --first_wp_wait \
+  --log_dir results_antarctica_csv \
+  --run_tag aspa135_60pts_deckga_test_run_1
+  
+  
+Terminal “Stop/kill” (use when something is stuck)
+# Stop Aerostack2 launch scripts (if project provides it)
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+./stop.bash || true
+
+# Kill only your Python scripts
+pkill -u "$USER" -f "deckga_execute_antarctica.py" || true
+pkill -u "$USER" -f "rviz_paths_node_antarctica.py" || true
+
+# Close RViz + Gazebo
+pkill -u "$USER" -f rviz2 || true
+pkill -u "$USER" -f "gz sim" || true
+pkill -u "$USER" -f gzserver || true
+pkill -u "$USER" -f gzclient || true
+
+# Optional ROS2 discovery reset (only if discovery is broken)
+ros2 daemon stop || true
+ros2 daemon start || true
+rm -rf /tmp/ros* || true
