@@ -3,35 +3,59 @@ origin:
     latitude: -66.28223056
     longitude: 110.53892500
     altitude: 30.19
+
 drones:
   - model_type: "quadrotor_base"
     model_name: "drone0"
     flight_time: 60
     xyz:
-      - 5.05
-      - 3.24
-      - 32.31
-    payload:
-      - model_type: "gps"
-        model_name: "gps"
-  - model_type: "quadrotor_base"
-    model_name: "drone1"
-    flight_time: 60
-    xyz:
-      - 5.65
-      - 6.10
-      - 32.09
-    payload:
-      - model_type: "gps"
-        model_name: "gps"
-  - model_type: "quadrotor_base"
-    model_name: "drone2"
-    flight_time: 60
-    xyz:
-      - 6.0
-      - 4.5
-      - 32.2
+      - 4.50
+      - 2.80
+      - 32.80
     payload:
       - model_type: "gps"
         model_name: "gps"
 
+  - model_type: "quadrotor_base"
+    model_name: "drone1"
+    flight_time: 60
+    xyz:
+      - 7.50
+      - 2.80
+      - 32.80
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone2"
+    flight_time: 60
+    xyz:
+      - 4.50
+      - 5.80
+      - 32.80
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone3"
+    flight_time: 60
+    xyz:
+      - 7.50
+      - 5.80
+      - 32.80
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone4"
+    flight_time: 60
+    xyz:
+      - 6.00
+      - 4.30
+      - 33.20
+    payload:
+      - model_type: "gps"
+        model_name: "gps"

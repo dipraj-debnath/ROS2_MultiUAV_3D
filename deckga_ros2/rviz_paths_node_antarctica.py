@@ -110,12 +110,22 @@ def transform_paths(
 
 
 def color_for(i: int):
-    # (r,g,b,a)
-    if i % 3 == 0:
-        return (1.0, 0.0, 0.0, 1.0)
-    if i % 3 == 1:
-        return (0.0, 1.0, 0.0, 1.0)
-    return (0.0, 0.0, 1.0, 1.0)
+    """
+    Distinct path colours for multi-UAV experiments.
+    Supports 2, 3, 4, 5+ UAVs without repeating red/green/blue immediately.
+    Returns (r, g, b, a).
+    """
+    palette = [
+        (1.0, 0.0, 0.0, 1.0),   # UAV0 red
+        (0.0, 0.8, 0.0, 1.0),   # UAV1 green
+        (0.0, 0.2, 1.0, 1.0),   # UAV2 blue
+        (1.0, 0.5, 0.0, 1.0),   # UAV3 orange
+        (0.7, 0.0, 1.0, 1.0),   # UAV4 purple
+        (0.0, 1.0, 1.0, 1.0),   # UAV5 cyan
+        (1.0, 0.0, 1.0, 1.0),   # UAV6 magenta
+        (1.0, 1.0, 0.0, 1.0),   # UAV7 yellow
+    ]
+    return palette[i % len(palette)]
 
 
 class DeckgaRvizAntarctica(Node):

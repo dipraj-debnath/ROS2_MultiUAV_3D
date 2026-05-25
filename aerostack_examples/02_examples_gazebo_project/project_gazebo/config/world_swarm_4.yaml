@@ -32,7 +32,7 @@ drones:
     flight_time: 60
     xyz:
       - 6.00
-      - 4.50
+      - 5.50
       - 32.20
     payload:
       - model_type: "gps"
@@ -43,7 +43,7 @@ drones:
     flight_time: 60
     xyz:
       - 7.50
-      - 6.00
+      - 6.50
       - 32.20
     payload:
       - model_type: "gps"

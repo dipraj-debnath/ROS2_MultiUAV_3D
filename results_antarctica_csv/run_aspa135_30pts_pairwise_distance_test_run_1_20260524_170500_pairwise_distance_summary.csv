@@ -1,2 +1,0 @@
-samples,duration_s,min_d_drone0_drone1_m,mean_d_drone0_drone1_m,max_d_drone0_drone1_m,min_d_drone1_drone2_m,mean_d_drone1_drone2_m,max_d_drone1_drone2_m,min_d_drone0_drone2_m,mean_d_drone0_drone2_m,max_d_drone0_drone2_m,overall_min_pairwise_m,overall_mean_min_pairwise_m,overall_max_min_pairwise_m,samples_csv
-1770,179.562681,2.679996,22.329815,57.308816,1.354435,23.012514,57.436605,1.412628,26.496473,56.137191,1.354435,15.605132,47.734270,results_antarctica_csv/run_aspa135_30pts_pairwise_distance_test_run_1_20260524_170500_pairwise_distances.csv
