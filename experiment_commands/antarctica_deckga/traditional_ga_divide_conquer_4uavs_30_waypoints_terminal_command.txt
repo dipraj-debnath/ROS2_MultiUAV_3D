@@ -1,0 +1,309 @@
+Terminal 0 — Clean ROS and confirm executor
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+git checkout antarctica
+git pull origin antarctica
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+ros2 daemon stop || true
+rm -rf /dev/shm/fastrtps_* /dev/shm/fastdds_* 2>/dev/null || true
+ros2 daemon start
+
+python3 -m py_compile deckga_ros2/deckga_execute_antarctica.py
+
+echo "=== Confirm old/stable executor ==="
+grep -n "skip_takeoff\|takeoff_relative\|takeoff_height\|takeoff_abs_z\|Taking off SEQUENTIALLY" \
+  deckga_ros2/deckga_execute_antarctica.py
+
+
+Terminal 1 — Activate 4-UAV swarm config
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+# Copy the 4-drone configuration into the active swarm file
+cp config/world_swarm_4.yaml config/world_swarm.yaml
+
+# Check active swarm file
+echo "=== Active world_swarm.yaml ==="
+cat config/world_swarm.yaml
+
+echo "=== Active drone names ==="
+grep -n "model_name" config/world_swarm.yaml
+
+echo "=== Active start positions ==="
+grep -A5 -n "xyz:" config/world_swarm.yaml
+
+
+Terminal 2 — Check 30-waypoint TXT and convert to PKL
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+echo "=== Check 30-point TXT ==="
+ls -la data/points/antarctica_aspa135_m3_30_points.txt
+head -n 5 data/points/antarctica_aspa135_m3_30_points.txt
+tail -n 5 data/points/antarctica_aspa135_m3_30_points.txt
+
+echo
+echo "=== Convert TXT to PKL ==="
+python3 - << 'PY'
+import numpy as np
+import pickle
+from pathlib import Path
+
+txt_in = Path("data/points/antarctica_aspa135_m3_30_points.txt")
+pkl_out = Path("data/points/antarctica_aspa135_m3_30_points.pkl")
+
+pts = np.genfromtxt(txt_in, dtype=float, names=True, delimiter=None)
+xyz = np.vstack([pts["x"], pts["y"], pts["z"]]).T
+
+mn = xyz.min(axis=0)
+mx = xyz.max(axis=0)
+
+print("Loaded:", txt_in.resolve())
+print("Shape :", xyz.shape)
+print(f"Ranges: x[{mn[0]:.2f},{mx[0]:.2f}] y[{mn[1]:.2f},{mx[1]:.2f}] z[{mn[2]:.2f},{mx[2]:.2f}]")
+
+if xyz.shape != (30, 3):
+    raise SystemExit(f"STOP: Expected 30 waypoints, got {xyz.shape[0]}.")
+
+with pkl_out.open("wb") as f:
+    pickle.dump(xyz, f)
+
+print("Saved:", pkl_out.resolve())
+PY
+
+
+Terminal 3 — Run Traditional GA + Divide & Conquer planner
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+python3 "DEGA_Divide & Conquer/Traditional_GA_Divide & Conquer.py" \
+  --points_pkl "data/points/antarctica_aspa135_m3_30_points.pkl" \
+  --num_uavs 4 \
+  --start_points="7.00,6.10,32.31;5.00,4.24,32.09;6.00,5.50,32.20;7.50,4.54,32.20" \
+  --out_pkl "deckga_ros2/data/traditional_ga_divide_conquer_output_antarctica_30_uav4.pkl" \
+  --save_fig_dir "results_antarctica" \
+  --population_size 50 \
+  --num_iterations 25000
+
+
+Terminal 3A — Inspect Traditional GA + Divide & Conquer output
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+python3 - << 'PY'
+import pickle
+import numpy as np
+
+p = "deckga_ros2/data/traditional_ga_divide_conquer_output_antarctica_30_uav4.pkl"
+
+with open(p, "rb") as f:
+    d = pickle.load(f)
+
+if "deckga_paths" in d:
+    paths = d["deckga_paths"]
+elif "paths" in d:
+    paths = d["paths"]
+else:
+    print("Available keys:", d.keys())
+    raise SystemExit("STOP: Could not find path key.")
+
+print("PKL:", p)
+print("Number of UAV paths:", len(paths))
+
+for i, P in enumerate(paths):
+    P = np.asarray(P, dtype=float)
+    print(f"\n=== Traditional GA Divide & Conquer UAV{i} path ===")
+    print(f"Number of points including start/end: {len(P)}")
+    print(f"x range: [{P[:,0].min():.2f}, {P[:,0].max():.2f}]")
+    print(f"y range: [{P[:,1].min():.2f}, {P[:,1].max():.2f}]")
+    print(f"z range: [{P[:,2].min():.2f}, {P[:,2].max():.2f}]")
+    for k, pt in enumerate(P, start=1):
+        print(f"{k:02d}: {pt[0]:8.2f}\t{pt[1]:8.2f}\t{pt[2]:8.2f}")
+PY
+
+
+Terminal 3B — Check transformed flight values
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+python3 - << 'PY'
+import pickle
+import numpy as np
+
+p = "deckga_ros2/data/traditional_ga_divide_conquer_output_antarctica_30_uav4.pkl"
+
+zin_min = 32.09
+zin_max = 39.98
+zout_min = 3.80
+zout_max = 6.80
+z_base = 32.2
+
+def map_z(z):
+    return z_base + (z - zin_min) / (zin_max - zin_min) * (zout_max - zout_min) + zout_min
+
+with open(p, "rb") as f:
+    d = pickle.load(f)
+
+if "deckga_paths" in d:
+    paths = d["deckga_paths"]
+elif "paths" in d:
+    paths = d["paths"]
+else:
+    print("Available keys:", d.keys())
+    raise SystemExit("STOP: Could not find path key.")
+
+print("Transform check:")
+print(f"Input z range  : [{zin_min:.2f}, {zin_max:.2f}]")
+print(f"Output z offset: [{zout_min:.2f}, {zout_max:.2f}]")
+print(f"z_base         : {z_base:.2f}")
+print(f"Final flight z : [{z_base + zout_min:.2f}, {z_base + zout_max:.2f}]")
+print(f"Takeoff target : {(z_base + zout_min + 0.10):.2f} using takeoff_margin=0.10")
+
+for i, P in enumerate(paths):
+    P = np.asarray(P, dtype=float)
+    Q = P.copy()
+    Q[:,2] = map_z(P[:,2])
+
+    print(f"\n=== TRANSFORMED UAV{i} flight path ===")
+    print(f"Number of points including start/end: {len(Q)}")
+    print(f"x range: [{Q[:,0].min():.2f}, {Q[:,0].max():.2f}]")
+    print(f"y range: [{Q[:,1].min():.2f}, {Q[:,1].max():.2f}]")
+    print(f"z range: [{Q[:,2].min():.2f}, {Q[:,2].max():.2f}]")
+    for k, pt in enumerate(Q, start=1):
+        print(f"{k:02d}: {pt[0]:8.2f}\t{pt[1]:8.2f}\t{pt[2]:8.2f}")
+PY
+
+
+Terminal 4 — Launch Aerostack2 + Gazebo
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+source ./setup_antarctica_env.bash
+
+./launch_as2.bash -m
+
+
+Terminal 5 — Check all 4 drones are active
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+echo "=== Drone nodes ==="
+ros2 node list | egrep "drone0|drone1|drone2|drone3" | head -n 300
+
+echo "=== Actions for drone0, drone1, drone2, drone3 ==="
+ros2 action list | sort | egrep "/drone[0-3]/(TakeoffBehavior|GoToBehavior|LandBehavior|FollowPathBehavior)" || true
+
+echo "=== Pose topics ==="
+ros2 topic list | grep -E "/drone[0-3]/(ground_truth|self_localization)/pose"
+
+echo "=== Robot descriptions ==="
+ros2 topic list | grep -E "/drone[0-3]/robot_description"
+
+
+Terminal 6 — Launch Ground Station + RViz
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+source ./setup_antarctica_env.bash
+
+./launch_ground_station.bash -m -t -v
+
+
+Terminal 7 — Publish Traditional GA Divide & Conquer paths in RViz
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/rviz_paths_node_antarctica.py \
+  --deckga_pkl deckga_ros2/data/traditional_ga_divide_conquer_output_antarctica_30_uav4.pkl \
+  --num_uavs 4 \
+  --coord_mode auto \
+  --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
+  --zin_min 32.09 --zin_max 39.98 \
+  --zout_min 3.80 --zout_max 6.80 \
+  --z_base 32.2 \
+  --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
+  --line_width 0.25 --wp_scale 0.45
+
+
+Terminal 8 — Pairwise distance logger for 4 drones
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/drone_pairwise_distance_logger.py \
+  --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose,/drone3/ground_truth/pose \
+  --names drone0,drone1,drone2,drone3 \
+  --msg_type pose_stamped \
+  --rate_hz 10 \
+  --print_every_s 1.0 \
+  --log_dir results_antarctica_csv \
+  --run_tag traditional_ga_divide_conquer_30_uav4_pairwise_distance_test_run_1
+
+
+Terminal 9 — Execute Traditional GA Divide & Conquer flight
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/deckga_execute_antarctica.py \
+  --deckga_pkl deckga_ros2/data/traditional_ga_divide_conquer_output_antarctica_30_uav4.pkl \
+  --namespaces drone0,drone1,drone2,drone3 \
+  --coord_mode auto \
+  --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
+  --zin_min 32.09 --zin_max 39.98 \
+  --zout_min 3.80 --zout_max 6.80 \
+  --z_base 32.2 \
+  --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
+  --takeoff_margin 0.10 \
+  --pre_arm_wait_s 5 \
+  --speed 1.9 \
+  --wait_actions_s 10 \
+  --init_wait_s 5 \
+  --takeoff_settle_s 3 \
+  --takeoff_sequential \
+  --first_wp_wait \
+  --ensure_reach \
+  --wp_settle_s 0.3 \
+  --log_dir results_antarctica_csv \
+  --run_tag traditional_ga_divide_conquer_30_uav4_test_run_1
+
+
+Terminal 10 — Check output CSVs
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+echo "=== Latest Traditional GA Divide & Conquer 30-point 4-UAV execution CSVs ==="
+ls -lh results_antarctica_csv | grep "traditional_ga_divide_conquer_30_uav4_test_run_1"
+
+echo "=== Latest Traditional GA Divide & Conquer 30-point 4-UAV pairwise CSVs ==="
+ls -lh results_antarctica_csv | grep "traditional_ga_divide_conquer_30_uav4_pairwise_distance_test_run_1"
+
+LATEST_EXEC=$(ls -t results_antarctica_csv/*traditional_ga_divide_conquer_30_uav4_test_run_1*summary.csv | head -n 1)
+echo "$LATEST_EXEC"
+cat "$LATEST_EXEC"
+
+LATEST_PAIRWISE=$(ls -t results_antarctica_csv/*traditional_ga_divide_conquer_30_uav4_pairwise_distance_test_run_1*summary.csv | head -n 1)
+echo "$LATEST_PAIRWISE"
+cat "$LATEST_PAIRWISE"
+
+
+Clean stop
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+./stop.bash || true
+
+pkill -u "$USER" -f "deckga_execute_antarctica.py" || true
+pkill -u "$USER" -f "rviz_paths_node_antarctica.py" || true
+pkill -u "$USER" -f "drone_pairwise_distance_logger.py" || true
+pkill -u "$USER" -f "rviz2" || true
+pkill -u "$USER" -f "gz sim" || true
+pkill -u "$USER" -f "gzserver" || true
+pkill -u "$USER" -f "gzclient" || true
+
+ros2 daemon stop || true
+ros2 daemon start || true
