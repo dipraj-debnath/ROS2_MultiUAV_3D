@@ -8,6 +8,7 @@ cp config/world_swarm_2.yaml config/world_swarm.yaml
 # Check active swarm file
 echo "=== Active world_swarm.yaml ==="
 cat config/world_swarm.yaml
+
 Terminal 1 — Convert TXT to PKL
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 git checkout antarctica
@@ -43,6 +44,7 @@ with pkl_out.open("wb") as f:
 
 print("Saved:", pkl_out.resolve())
 PY
+
 Terminal 2 — Run DECK_GA for 2 drones
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 
@@ -118,7 +120,7 @@ python3 deckga_ros2/rviz_paths_node_antarctica.py \
   --coord_mode auto \
   --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
   --zin_min 32.34 --zin_max 41.30 \
-  --zout_min 0.14 --zout_max 9.10 \
+  --zout_min 3.80 --zout_max 6.80 \
   --z_base 32.2 \
   --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
   --line_width 0.25 --wp_scale 0.45
@@ -157,21 +159,23 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --coord_mode auto \
   --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
   --zin_min 32.34 --zin_max 41.30 \
-  --zout_min 0.14 --zout_max 9.10 \
+  --zout_min 3.80 --zout_max 6.80\
   --z_base 32.2 \
   --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
   --takeoff_margin 0.10 \
-  --pre_arm_wait_s 12 \
-  --speed 1.5 \
-  --wait_actions_s 60 \
+  --pre_arm_wait_s 5 \
+  --speed 1.9 \
+  --wait_actions_s 10 \
   --init_wait_s 5 \
-  --takeoff_settle_s 6 \
+  --takeoff_settle_s 1 \
   --takeoff_sequential \
   --first_wp_wait \
   --ensure_reach \
-  --wp_settle_s 0.6 \
+  --wp_settle_s 0.3 \
   --log_dir results_antarctica_csv \
   --run_tag aspa135_30pts_uav2_deckga_test_run_1
+
+
 Terminal 9 — Check output CSV files
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 

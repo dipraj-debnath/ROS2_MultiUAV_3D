@@ -47,7 +47,7 @@ drones:
     flight_time: 60
     xyz:
       - 4.50
-      - 2.80
+      - 5.80
       - 32.80
     payload:
       - model_type: "gps"
@@ -58,7 +58,7 @@ drones:
     flight_time: 60
     xyz:
       - 7.50
-      - 2.80
+      - 5.80
       - 32.80
     payload:
       - model_type: "gps"
@@ -69,7 +69,7 @@ drones:
     flight_time: 60
     xyz:
       - 4.50
-      - 5.80
+      - 2.80
       - 32.80
     payload:
       - model_type: "gps"
@@ -80,7 +80,7 @@ drones:
     flight_time: 60
     xyz:
       - 7.50
-      - 5.80
+      - 2.80
       - 32.80
     payload:
       - model_type: "gps"
@@ -154,7 +154,7 @@ cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 python3 DECK_GA.py \
   --points_pkl "data/points/antarctica_aspa135_m3_30_points.pkl" \
   --num_uavs 5 \
-  --start_points="4.50,2.80,32.80;7.50,2.80,32.80;4.50,5.80,32.80;7.50,5.80,32.80;6.00,4.30,33.20" \
+  --start_points="4.50,5.80,32.80;7.50,5.80,32.80;4.50,2.80,32.80;7.50,2.80,32.80;6.00,4.30,33.20" \
   --out_pkl "deckga_ros2/data/deckga_output_antarctica_30_uav5.pkl" \
   --save_fig_dir "results_antarctica"
 
@@ -324,7 +324,7 @@ python3 deckga_ros2/drone_pairwise_distance_logger.py \
   --rate_hz 10 \
   --print_every_s 1.0 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_30pts_uav5_z36_39_pairwise_distance_test_run_1
+  --run_tag 30pts_uav5_pairwise_distance_test_run_1
 
 
 # ============================================================
@@ -347,8 +347,8 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
   --takeoff_margin 0.10 \
   --pre_arm_wait_s 5 \
-  --speed 1.5 \
-  --wait_actions_s 30 \
+  --speed 1.9 \
+  --wait_actions_s 20 \
   --init_wait_s 5 \
   --takeoff_settle_s 3 \
   --takeoff_sequential \
@@ -356,7 +356,7 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --ensure_reach \
   --wp_settle_s 0.3 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_30pts_uav5_z36_39_deckga_test_run_1
+  --run_tag 30pts_uav5_deckga_test_run_1
 
 
 # ============================================================

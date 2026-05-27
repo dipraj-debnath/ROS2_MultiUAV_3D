@@ -23,7 +23,7 @@ def initialize_centroids_kmeans_plus_plus(points, num_clusters):
                 break
     return np.array(centroids)
 
-def manual_kmeans_clustering(points, num_clusters, max_iterations=100000, tolerance=1e-4):
+def manual_kmeans_clustering(points, num_clusters, max_iterations=500000, tolerance=1e-5):
     """
     Optimized KMeans Clustering Algorithm for 3D points.
 

@@ -43,7 +43,7 @@ drones:
     flight_time: 60
     xyz:
       - 7.00
-      - 6.10
+      - 5.50
       - 32.09
     payload:
       - model_type: "gps"
@@ -53,8 +53,8 @@ drones:
     model_name: "drone2"
     flight_time: 60
     xyz:
-      - 6.00
-      - 4.50
+      - 5.50
+      - 6.30
       - 32.20
     payload:
       - model_type: "gps"
@@ -68,6 +68,9 @@ grep -n "model_name" config/world_swarm.yaml
 
 echo "=== Active world_swarm.yaml start positions ==="
 grep -A5 -n "xyz:" config/world_swarm.yaml
+
+
+
 Terminal 2 — Convert restored 30-waypoint TXT to PKL
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 
@@ -102,18 +105,18 @@ with pkl_out.open("wb") as f:
 print("Saved:", pkl_out.resolve())
 PY
 
-Expected waypoint TXT range:
 
-z[35.37,39.98]
 Terminal 3 — Run DECK-GA for 3 UAVs
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 
 python3 DECK_GA.py \
   --points_pkl "data/points/antarctica_aspa135_m3_30_points.pkl" \
   --num_uavs 3 \
-  --start_points="5.00,4.24,32.31;7.00,6.10,32.09;6.00,4.50,32.20" \
+  --start_points="5.00,4.24,32.31;7.00,5.50,32.09;5.50,6.30,32.20" \
   --out_pkl "deckga_ros2/data/deckga_output_antarctica_30.pkl" \
   --save_fig_dir "results_antarctica"
+  
+  
 Terminal 3A — Inspect raw DECK-GA output before flying
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 
@@ -192,6 +195,8 @@ Expected:
 
 Final flight z : [36.00, 39.00]
 Takeoff target : 36.10
+
+
 Terminal 4 — Launch Aerostack2 + Gazebo
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 
@@ -273,7 +278,7 @@ python3 deckga_ros2/drone_pairwise_distance_logger.py \
   --rate_hz 10 \
   --print_every_s 1.0 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_30pts_uav3_z36_39_pairwise_distance_test_run_1
+  --run_tag 30pts_uav3_pairwise_distance_test_run_1
 
 Leave this running. Press Ctrl+C after the mission ends to save the summary.
 
@@ -294,8 +299,8 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
   --takeoff_margin 0.10 \
   --pre_arm_wait_s 5 \
-  --speed 1.5 \
-  --wait_actions_s 30 \
+  --speed 1.9 \
+  --wait_actions_s 10 \
   --init_wait_s 5 \
   --takeoff_settle_s 3 \
   --takeoff_sequential \
@@ -303,7 +308,7 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --ensure_reach \
   --wp_settle_s 0.3 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_30pts_uav3_z36_39_deckga_test_run_1
+  --run_tag 30pts_uav3_deckga_test_run_1
 
 Expected printout:
 
