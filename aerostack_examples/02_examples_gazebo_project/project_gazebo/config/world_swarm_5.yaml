@@ -1,5 +1,5 @@
 world_name: "aspa135_m3"
-origin: 
+origin:
     latitude: -66.28223056
     longitude: 110.53892500
     altitude: 30.19
@@ -10,7 +10,7 @@ drones:
     flight_time: 60
     xyz:
       - 7.50
-      - 5.80
+      - 6.00
       - 32.80
     payload:
       - model_type: "gps"
@@ -21,7 +21,7 @@ drones:
     flight_time: 60
     xyz:
       - 4.50
-      - 2.80
+      - 6.00
       - 32.80
     payload:
       - model_type: "gps"
@@ -32,7 +32,7 @@ drones:
     flight_time: 60
     xyz:
       - 4.50
-      - 5.80
+      - 3.00
       - 32.80
     payload:
       - model_type: "gps"
@@ -43,7 +43,7 @@ drones:
     flight_time: 60
     xyz:
       - 7.50
-      - 2.80
+      - 3.00
       - 32.80
     payload:
       - model_type: "gps"
@@ -54,7 +54,7 @@ drones:
     flight_time: 60
     xyz:
       - 6.00
-      - 4.30
+      - 4.50
       - 33.20
     payload:
       - model_type: "gps"

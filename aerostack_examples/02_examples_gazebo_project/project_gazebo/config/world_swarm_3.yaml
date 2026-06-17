@@ -31,7 +31,7 @@ drones:
     model_name: "drone2"
     flight_time: 60
     xyz:
-      - 5.50
+      - 5.00
       - 6.30
       - 32.20
     payload:
