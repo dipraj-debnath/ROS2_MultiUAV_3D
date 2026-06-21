@@ -23,44 +23,76 @@ source "$ROS2_SETUP"
 source "$AS2_SETUP"
 set -u
 
+LIVE_POSE_TOPICS=(
+    "/drone0/ground_truth/pose"
+    "/drone1/ground_truth/pose"
+)
+
 REQUIRED_ACTIONS=(
     "/drone0/TakeoffBehavior"
     "/drone0/GoToBehavior"
     "/drone0/LandBehavior"
+    "/drone0/FollowPathBehavior"
     "/drone1/TakeoffBehavior"
     "/drone1/GoToBehavior"
     "/drone1/LandBehavior"
+    "/drone1/FollowPathBehavior"
 )
 
 # ---------------------------------------------------------------------------
-# wait_for_actions: poll until all drone action topics appear or timeout
+# wait_for_ready: confirm drones are ACTUALLY alive before proceeding.
+# Requires BOTH:
+#   1) live pose messages flowing on /droneN/ground_truth/pose
+#   2) all required action servers advertised (including FollowPathBehavior)
+# Stale action names linger in the ROS graph after cleanup; the pose-topic
+# check is the definitive signal that the drone interfaces are truly up.
 # ---------------------------------------------------------------------------
-wait_for_actions() {
+wait_for_ready() {
     local timeout_s=240
     local interval=5
     local elapsed=0
-    echo "[wait_for_actions] Polling for drone actions (timeout ${timeout_s}s)..."
+    local echo_timeout=4   # seconds to wait for a single topic echo
+    echo "[wait_for_ready] Waiting for live poses + all actions (timeout ${timeout_s}s)..."
     while true; do
-        local action_list
-        action_list=$(ros2 action list 2>/dev/null || true)
         local all_ok=true
-        for action in "${REQUIRED_ACTIONS[@]}"; do
-            if ! grep -q "$action" <<< "$action_list"; then
+        local reason=""
+
+        # --- Check 1: fresh pose messages must be flowing ---
+        for topic in "${LIVE_POSE_TOPICS[@]}"; do
+            if ! timeout "$echo_timeout" ros2 topic echo --once "$topic" \
+                    > /dev/null 2>&1; then
                 all_ok=false
+                reason="no live message on $topic"
                 break
             fi
         done
+
+        # --- Check 2: all action servers must be advertised ---
         if $all_ok; then
-            echo "[wait_for_actions] All actions available (${elapsed}s elapsed)."
+            local action_list
+            action_list=$(ros2 action list 2>/dev/null || true)
+            for action in "${REQUIRED_ACTIONS[@]}"; do
+                if ! grep -q "$action" <<< "$action_list"; then
+                    all_ok=false
+                    reason="action not yet available: $action"
+                    break
+                fi
+            done
+        fi
+
+        if $all_ok; then
+            echo "[wait_for_ready] Drones LIVE — poses flowing and all actions up (${elapsed}s elapsed)."
             return 0
         fi
+
         if (( elapsed >= timeout_s )); then
-            echo "[WARN] Timed out waiting for actions after ${timeout_s}s. Proceeding anyway."
+            echo "[WARN] Timed out after ${timeout_s}s. Last reason: $reason. Proceeding anyway."
             return 0
         fi
+
         sleep $interval
         elapsed=$(( elapsed + interval ))
-        echo "  ... still waiting (${elapsed}s elapsed)"
+        echo "  ... not ready yet [${reason}] (${elapsed}s elapsed)"
     done
 }
 
@@ -182,13 +214,13 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
         cd "$PROJECT_GAZEBO"
         ./launch_as2.bash -m
     ) &
-    echo "[run $N] launch_as2.bash started in background. Sleeping 30s for tmux sessions to stabilise..."
-    sleep 30
+    echo "[run $N] launch_as2.bash started in background. Sleeping 45s for tmux sessions to stabilise..."
+    sleep 45
 
     # ------------------------------------------------------------------
-    # Step 2: Wait until drone actions are advertised
+    # Step 2: Wait until drones are truly ready (live poses + all actions)
     # ------------------------------------------------------------------
-    wait_for_actions
+    wait_for_ready
 
     # ------------------------------------------------------------------
     # Step 3: Start pairwise distance logger in background
