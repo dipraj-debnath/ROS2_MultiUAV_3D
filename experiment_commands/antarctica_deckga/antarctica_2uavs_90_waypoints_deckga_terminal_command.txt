@@ -82,7 +82,7 @@ cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 python3 DECK_GA.py \
   --points_pkl "data/points/antarctica_aspa135_m3_90_points.pkl" \
   --num_uavs 2 \
-  --start_points="7.00,4.24,32.31;5.00,6.10,32.09" \
+  --start_points="7.00,4.24,32.31;4.50,4.24,32.09" \
   --out_pkl "deckga_ros2/data/deckga_output_antarctica_90_uav2.pkl" \
   --save_fig_dir "results_antarctica"
   
