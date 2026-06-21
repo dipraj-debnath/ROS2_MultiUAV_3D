@@ -1,4 +1,13 @@
 Antarctica 30 waypoints — DECK-GA — 2 drones
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+ros2 daemon stop || true
+rm -rf /dev/shm/fastrtps_* /dev/shm/fastdds_* 2>/dev/null || true
+ros2 daemon start
+
 Terminal 0 — Activate 2-drone swarm config
 cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
 
@@ -143,7 +152,7 @@ python3 deckga_ros2/drone_pairwise_distance_logger.py \
   --rate_hz 10 \
   --print_every_s 1.0 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_30pts_uav2_pairwise_distance_test_run_1
+  --run_tag ex1_30pts_uav2_pairwise_distance_test_run_1
 
 Leave this running. After the mission finishes, press Ctrl+C in this terminal to save the summary CSV.
 
