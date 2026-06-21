@@ -13,9 +13,12 @@ AS2_SETUP="$HOME/as2_harmonic_ws/install/setup.bash"
 ANTARCTICA_ENV="$PROJECT_GAZEBO/setup_antarctica_env.bash"
 
 # Source ROS2 + AS2 into this shell so ros2 CLI works for action polling
+# ROS2 setup scripts reference unset vars internally, so disable -u around them
 # shellcheck disable=SC1090
+set +u
 source "$ROS2_SETUP"
 source "$AS2_SETUP"
+set -u
 
 REQUIRED_ACTIONS=(
     "/drone0/TakeoffBehavior"
@@ -93,7 +96,8 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
     # ------------------------------------------------------------------
     echo "[run $N] Launching Gazebo + Aerostack2..."
     (
-        set +e   # tmux attach-session will fail in non-interactive shell — that is OK
+        set +eu  # tmux attach-session will fail in non-interactive shell — that is OK
+                 # also disable -u so ROS2 setup scripts don't trip on unbound vars
         # shellcheck disable=SC1090
         source "$ROS2_SETUP"
         source "$AS2_SETUP"
