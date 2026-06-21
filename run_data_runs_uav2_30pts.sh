@@ -12,8 +12,11 @@ ROS2_SETUP="/opt/ros/humble/setup.bash"
 AS2_SETUP="$HOME/as2_harmonic_ws/install/setup.bash"
 ANTARCTICA_ENV="$PROJECT_GAZEBO/setup_antarctica_env.bash"
 
-# Source ROS2 + AS2 into this shell so ros2 CLI works for action polling
-# ROS2 setup scripts reference unset vars internally, so disable -u around them
+# Tmux session names created by launch_as2.bash (one per drone namespace)
+TMUX_SESSIONS=("drone0" "drone1")
+
+# Source ROS2 + AS2 into this shell so ros2 CLI works for action polling.
+# ROS2 setup scripts reference unset vars internally, so disable -u around them.
 # shellcheck disable=SC1090
 set +u
 source "$ROS2_SETUP"
@@ -29,7 +32,9 @@ REQUIRED_ACTIONS=(
     "/drone1/LandBehavior"
 )
 
-# Poll ros2 action list until all required actions appear or timeout
+# ---------------------------------------------------------------------------
+# wait_for_actions: poll until all drone action topics appear or timeout
+# ---------------------------------------------------------------------------
 wait_for_actions() {
     local timeout_s=240
     local interval=5
@@ -59,26 +64,94 @@ wait_for_actions() {
     done
 }
 
-# Terminal 10 full cleanup
+# ---------------------------------------------------------------------------
+# wait_until_clean: block until gz/gazebo/drone-interface procs are gone
+# ---------------------------------------------------------------------------
+wait_until_clean() {
+    local timeout_s=30
+    local interval=2
+    local elapsed=0
+    echo "[wait_until_clean] Waiting for all Gazebo/drone processes to die (up to ${timeout_s}s)..."
+    while true; do
+        local found=false
+        if pgrep -u "$USER" -f "gz sim"            > /dev/null 2>&1; then found=true; fi
+        if pgrep -u "$USER" -x "gzserver"          > /dev/null 2>&1; then found=true; fi
+        if pgrep -u "$USER" -x "gzclient"          > /dev/null 2>&1; then found=true; fi
+        if pgrep -u "$USER" -f "gazebo"            > /dev/null 2>&1; then found=true; fi
+        if pgrep -u "$USER" -f "drone._interface"  > /dev/null 2>&1; then found=true; fi
+        if pgrep -u "$USER" -f "micro.xrce\|MicroXRCE\|uxr_agent" > /dev/null 2>&1; then found=true; fi
+
+        if ! $found; then
+            echo "[wait_until_clean] Environment is clean (${elapsed}s elapsed)."
+            return 0
+        fi
+        if (( elapsed >= timeout_s )); then
+            echo "[WARN] Processes still alive after ${timeout_s}s — continuing anyway."
+            return 0
+        fi
+        sleep $interval
+        elapsed=$(( elapsed + interval ))
+        echo "  ... still waiting for processes to die (${elapsed}s)"
+    done
+}
+
+# ---------------------------------------------------------------------------
+# do_cleanup: full teardown of Gazebo, AS2, tmux sessions, ROS2 daemon
+# ---------------------------------------------------------------------------
 do_cleanup() {
     local n=$1
-    echo "--- Cleanup (Terminal 10) for run $n ---"
+    echo "--- Cleanup for run $n ---"
+
+    # stop.bash (Aerostack2 graceful stop)
     (cd "$PROJECT_GAZEBO" && ./stop.bash) 2>/dev/null || true
-    pkill -u "$USER" -f "deckga_execute_antarctica.py"    2>/dev/null || true
-    pkill -u "$USER" -f "rviz_paths_node_antarctica.py"   2>/dev/null || true
+
+    # Kill tmux sessions created by launch_as2.bash (named after drone namespaces)
+    for session in "${TMUX_SESSIONS[@]}"; do
+        tmux kill-session -t "$session" 2>/dev/null || true
+    done
+    # Belt-and-suspenders: kill-server wipes any stray sessions
+    tmux kill-server 2>/dev/null || true
+
+    # Kill experiment Python processes
+    pkill -u "$USER" -f "deckga_execute_antarctica.py"      2>/dev/null || true
+    pkill -u "$USER" -f "rviz_paths_node_antarctica.py"     2>/dev/null || true
     pkill -u "$USER" -f "drone_pairwise_distance_logger.py" 2>/dev/null || true
-    pkill -u "$USER" -f rviz2                             2>/dev/null || true
-    pkill -u "$USER" -f "gz sim"                          2>/dev/null || true
-    pkill -u "$USER" -f gzserver                          2>/dev/null || true
-    pkill -u "$USER" -f gzclient                          2>/dev/null || true
+
+    # Kill RViz
+    pkill -u "$USER" -f rviz2 2>/dev/null || true
+
+    # Kill Gazebo processes
+    pkill -u "$USER" -f "gz sim"   2>/dev/null || true
+    pkill -u "$USER" -x gzserver   2>/dev/null || true
+    pkill -u "$USER" -x gzclient   2>/dev/null || true
+    pkill -u "$USER" -f gazebo     2>/dev/null || true
+
+    # Kill Aerostack2 / AS2 node processes
+    pkill -u "$USER" -f "as2_"         2>/dev/null || true
+    pkill -u "$USER" -f "aerostack"    2>/dev/null || true
+
+    # Kill micro-XRCE DDS agent (used by PX4/AS2 bridge if present)
+    pkill -u "$USER" -f "MicroXRCEAgent" 2>/dev/null || true
+    pkill -u "$USER" -f "micro.xrce"     2>/dev/null || true
+    pkill -u "$USER" -f "uxr_agent"      2>/dev/null || true
+
+    # Reset ROS2 daemon and clear shared memory
     ros2 daemon stop  2>/dev/null || true
-    sleep 3
+    sleep 2
     ros2 daemon start 2>/dev/null || true
     rm -rf /tmp/ros*  2>/dev/null || true
+    rm -rf /dev/shm/fastrtps_* /dev/shm/fastdds_* 2>/dev/null || true
+
+    # Wait until Gazebo/drone processes are actually gone
+    wait_until_clean
+
+    # Final settle before the caller continues
+    echo "[cleanup] Settling 15s..."
+    sleep 15
     echo "--- Cleanup done ---"
 }
 
-# Kill Gazebo and the pairwise logger if the script exits for any reason
+# Kill Gazebo and logger if the script exits for any reason
 trap 'echo "[trap] Script exiting — running emergency cleanup..."; do_cleanup "trap"' EXIT INT TERM
 
 cd "$REPO"
@@ -92,12 +165,16 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
     echo ""
 
     # ------------------------------------------------------------------
+    # Pre-flight: confirm environment is clean before launching
+    # ------------------------------------------------------------------
+    wait_until_clean
+
+    # ------------------------------------------------------------------
     # Step 1: Launch Gazebo + Aerostack2 in background
     # ------------------------------------------------------------------
     echo "[run $N] Launching Gazebo + Aerostack2..."
     (
-        set +eu  # tmux attach-session will fail in non-interactive shell — that is OK
-                 # also disable -u so ROS2 setup scripts don't trip on unbound vars
+        set +eu  # tmux attach-session fails in non-interactive shell — OK
         # shellcheck disable=SC1090
         source "$ROS2_SETUP"
         source "$AS2_SETUP"
@@ -133,6 +210,7 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
     # Step 4: Run DECK-GA executor (foreground — blocks until mission done)
     # ------------------------------------------------------------------
     echo "[run $N] Running DECK-GA executor (ex${N} PKL)..."
+    set +e
     python3 deckga_ros2/deckga_execute_antarctica.py \
         --deckga_pkl "deckga_ros2/data/deckga_output_antarctica_30_uav2_ex${N}.pkl" \
         --namespaces drone0,drone1 \
@@ -154,25 +232,32 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
         --wp_settle_s 0.3 \
         --log_dir results_antarctica_csv \
         --run_tag "ex${N}_30pts_uav2_deckga_run_${N}"
-    echo "[run $N] Executor finished."
+    EXEC_EXIT=$?
+    set -e
+
+    if (( EXEC_EXIT != 0 )); then
+        echo ""
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "WARNING: RUN $N MAY HAVE FAILED — VERIFY"
+        echo "Executor exited with code $EXEC_EXIT"
+        echo "Check results_antarctica_csv/ for run $N CSVs."
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo ""
+    else
+        echo "[run $N] Executor finished successfully (exit 0)."
+    fi
 
     # ------------------------------------------------------------------
     # Step 5: SIGINT pairwise logger so it flushes its summary CSV
     # ------------------------------------------------------------------
     echo "[run $N] Sending SIGINT to pairwise logger (PID $LOGGER_PID) to flush CSV..."
     kill -SIGINT "$LOGGER_PID" 2>/dev/null || true
-    sleep 5   # Give logger time to write files before cleanup kills it
+    sleep 5
 
     # ------------------------------------------------------------------
-    # Step 6: Full Terminal 10 cleanup — kill Gazebo, rviz, reset daemon
+    # Step 6: Full cleanup — kill Gazebo, tmux, AS2, reset daemon
     # ------------------------------------------------------------------
     do_cleanup "$N"
-
-    # ------------------------------------------------------------------
-    # Step 7: Settle before next run
-    # ------------------------------------------------------------------
-    echo "[run $N] Settling 10s before next run..."
-    sleep 10
 
     echo ""
     echo "=========================================="
