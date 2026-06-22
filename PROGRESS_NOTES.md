@@ -1,5 +1,5 @@
 # Experiment Progress Notes
-Last updated: 2026-06-22
+Last updated: 2026-06-23
 
 ---
 
@@ -8,34 +8,38 @@ Last updated: 2026-06-22
 ### 2 UAVs — 30 Waypoints
 | Stage | Status |
 |---|---|
-| DECK-GA planner 10 runs | COMPLETE — `deck_ga_2uavs_30_points_10_runs_results.txt` |
+| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_30_points_10_runs_results.txt` |
 | Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_antarctica_csv/summary_table_uav2_30pts.txt` |
+| Summary table | COMPLETE — `results_csv/summary_table_uav2_30pts.txt` |
 
 Results: optimized total = 283.965 m, mission makespan mean = 128.4 s, min pairwise mean = 1.715 m.
 
 ### 2 UAVs — 60 Waypoints
 | Stage | Status |
 |---|---|
-| DECK-GA planner 10 runs | COMPLETE — `deck_ga_2uavs_60_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | NOT STARTED — script not yet built |
-| Summary table | NOT STARTED |
+| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_60_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
+| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
+| Summary table | COMPLETE — `results_csv/summary_table_uav2_60pts.txt` |
 
-Results (planner only): optimized total = 370.698 m, GA time mean = 61.845 s.
+Results: optimized total = 370.698 m, mission makespan mean = 164.4 s, min pairwise mean = 2.476 m.
 
 ### 2 UAVs — 90 Waypoints
 | Stage | Status |
 |---|---|
-| DECK-GA planner 10 runs | NOT STARTED |
-| Gazebo flight 10 runs | NOT STARTED |
-| Summary table | NOT STARTED |
+| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_90_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
+| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
+| Summary table | COMPLETE — `results_csv/summary_table_uav2_90pts.txt` |
+
+Results: optimized total = 434.885 m, mission makespan mean = 211.6 s, min pairwise mean = 0.839 m.
 
 ### 2 UAVs — 120 Waypoints
 | Stage | Status |
 |---|---|
-| DECK-GA planner 10 runs | NOT STARTED |
-| Gazebo flight 10 runs | NOT STARTED |
-| Summary table | NOT STARTED |
+| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_120_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
+| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
+| Summary table | COMPLETE — `results_csv/summary_table_uav2_120pts.txt` |
+
+Results: optimized total = 450.477 m, mission makespan mean = 268.7 s, min pairwise mean = 1.392 m.
 
 ---
 
@@ -60,39 +64,18 @@ All four command files (30, 60, 90, 120 waypoints) have been updated to use thes
 |---|---|
 | `run_deckga_10x.sh` | Runs DECK-GA planner 10x for 2 UAVs, 30 waypoints. Saves `deckga_output_antarctica_30_uav2_ex{1..10}.pkl`. |
 | `run_deckga_10x_60pts.sh` | Same but for 60 waypoints. Saves `deckga_output_antarctica_60_uav2_ex{1..10}.pkl`. |
-| `run_data_runs_uav2_30pts.sh <start> <end>` | Automated Gazebo flight runner for 30-waypoint 2-UAV experiment. Restarts Gazebo between runs, polls for live drone readiness (pose + FollowPathBehavior), runs pairwise logger and executor, cleans up, settles 15 s. Run one at a time from a fresh terminal: `bash run_data_runs_uav2_30pts.sh N N`. |
-| `make_summary_table.py <waypoints> <uavs>` | Reads all 10 run CSVs from `results_antarctica_csv/` and writes an aligned summary table with planned/mission makespan, total distance, and min pairwise separation plus mean/std. Example: `python3 make_summary_table.py 30 2`. |
+| `run_deckga_10x_90pts.sh` | Same but for 90 waypoints. Saves `deckga_output_antarctica_90_uav2_ex{1..10}.pkl`. |
+| `run_deckga_10x_120pts.sh` | Same but for 120 waypoints. Saves `deckga_output_antarctica_120_uav2_ex{1..10}.pkl`. |
+| `run_data_runs_uav2_30pts.sh <start> <end>` | Automated Gazebo flight runner for 30-waypoint 2-UAV experiment. |
+| `run_data_runs_uav2_60pts.sh <start> <end>` | Automated Gazebo flight runner for 60-waypoint 2-UAV experiment. |
+| `run_data_runs_uav2_90pts.sh <start> <end>` | Automated Gazebo flight runner for 90-waypoint 2-UAV experiment. |
+| `run_data_runs_uav2_120pts.sh <start> <end>` | Automated Gazebo flight runner for 120-waypoint 2-UAV experiment. |
+| `make_summary_table.py <waypoints> <uavs>` | Reads all 10 run CSVs from `results_antarctica_csv/` and writes an aligned summary table to `results_csv/`. Example: `python3 make_summary_table.py 30 2`. |
 | `make_summary_table_uav2_30pts.py` | Original fixed version of the above for 30 pts / 2 UAVs — kept as reference. |
 
 ---
 
-## 4. Next Step Tomorrow
-
-**Build `run_data_runs_uav2_60pts.sh`** — the Gazebo flight automation script for the 60-waypoint 2-UAV case.
-
-Base it on `run_data_runs_uav2_30pts.sh` but change the executor flags specific to 60 points:
-
-```bash
---deckga_pkl "deckga_ros2/data/deckga_output_antarctica_60_uav2_ex${N}.pkl"
---zin_min 32.09 --zin_max 39.97
---zout_min 3.80 --zout_max 6.80
---z_base 32.2
---speed 1.9
---wait_actions_s 30    # longer wait (was 10)
---takeoff_settle_s 3   # longer settle (was 1)
---log_dir results_antarctica_csv
---run_tag "ex${N}_60pts_uav2_deckga_run_${N}"
-```
-
-Pairwise logger run_tag: `ex${N}_60pts_uav2_pairwise_distance_run_${N}`
-
-PKL pattern for make_summary_table.py will be: `*ex{N}_60pts_uav2_deckga_run_{N}*summary.csv`
-
-After building the script, test with a single run: `bash run_data_runs_uav2_60pts.sh 1 1`
-
----
-
-## 5. Verification Habit — Per-Run Health Check
+## 4. Verification Habit — Per-Run Health Check
 
 After each Gazebo run completes, confirm the run is GOOD before moving to the next:
 
