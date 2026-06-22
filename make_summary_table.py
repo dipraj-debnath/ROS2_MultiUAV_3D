@@ -16,7 +16,9 @@ WPTS = args.waypoints
 UAVS = args.uavs
 NUM_RUNS    = 10
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results_antarctica_csv")
-OUT_FILE    = os.path.join(RESULTS_DIR, f"summary_table_uav{UAVS}_{WPTS}pts.txt")
+OUT_DIR     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results_csv")
+os.makedirs(OUT_DIR, exist_ok=True)
+OUT_FILE    = os.path.join(OUT_DIR, f"summary_table_uav{UAVS}_{WPTS}pts.txt")
 
 DECKGA_COLS  = ["planned_makespan_s", "mission_makespan_s",
                 "planned_total_dist_m", "executed_total_dist_m"]
