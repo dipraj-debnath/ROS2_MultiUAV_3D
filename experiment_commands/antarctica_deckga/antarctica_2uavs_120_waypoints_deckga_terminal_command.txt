@@ -258,7 +258,7 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --takeoff_margin 0.10 \
   --pre_arm_wait_s 5 \
   --speed 1.9 \
-  --wait_actions_s 10 \
+  --wait_actions_s 30 \
   --init_wait_s 5 \
   --takeoff_settle_s 3 \
   --takeoff_sequential \
