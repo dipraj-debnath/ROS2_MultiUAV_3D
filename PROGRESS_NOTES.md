@@ -77,7 +77,7 @@ Base it on `run_data_runs_uav2_30pts.sh` but change the executor flags specific 
 --zin_min 32.09 --zin_max 39.97
 --zout_min 3.80 --zout_max 6.80
 --z_base 32.2
---speed 1.5            # slower than 30-pt runs (was 1.9)
+--speed 1.9
 --wait_actions_s 30    # longer wait (was 10)
 --takeoff_settle_s 3   # longer settle (was 1)
 --log_dir results_antarctica_csv

@@ -182,7 +182,7 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --ensure_reach \
   --wp_settle_s 0.3 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_30pts_uav2_deckga_test_run_1
+  --run_tag ex1_30pts_uav2_deckga_test_run_1
 
 
 Terminal 9 — Check output CSV files
