@@ -1,0 +1,169 @@
+DECK-GA | 3 UAVs | 60 Waypoints | 10 Runs Results
+antarctica_aspa135_m3 | start_points: 4.00,8.00,32.31 ; 7.00,6.00,32.09 ; 5.50,4.00,32.20
+===========================================================================
+
+=== Run 1 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 139.372
+UAV 1: 73.978
+UAV 2: 146.061
+Total optimized: 359.4114729549982
+--- Summary ---
+DCKmeans Time: 0.001 s
+GA Time     : 74.002 s
+Total Time  : 74.003 s
+
+=== Run 2 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 144.460
+UAV 1: 73.978
+UAV 2: 145.733
+Total optimized: 364.1709948266255
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 74.091 s
+Total Time  : 74.091 s
+
+=== Run 3 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 144.460
+UAV 1: 73.978
+UAV 2: 145.733
+Total optimized: 364.1709948266255
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 62.915 s
+Total Time  : 62.916 s
+
+=== Run 4 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 144.460
+UAV 1: 73.978
+UAV 2: 145.733
+Total optimized: 364.1709948266255
+--- Summary ---
+DCKmeans Time: 0.001 s
+GA Time     : 74.035 s
+Total Time  : 74.035 s
+
+=== Run 5 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 139.372
+UAV 1: 73.978
+UAV 2: 145.733
+Total optimized: 359.0831917363622
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 72.876 s
+Total Time  : 72.876 s
+
+=== Run 6 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 139.372
+UAV 1: 73.978
+UAV 2: 146.061
+Total optimized: 359.4114729549982
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 73.467 s
+Total Time  : 73.467 s
+
+=== Run 7 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 139.372
+UAV 1: 73.978
+UAV 2: 146.061
+Total optimized: 359.4114729549982
+--- Summary ---
+DCKmeans Time: 0.001 s
+GA Time     : 61.420 s
+Total Time  : 61.421 s
+
+=== Run 8 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 139.372
+UAV 1: 73.978
+UAV 2: 146.061
+Total optimized: 359.4114729549982
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 71.258 s
+Total Time  : 71.258 s
+
+=== Run 9 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 139.372
+UAV 1: 73.978
+UAV 2: 146.061
+Total optimized: 359.4114729549982
+--- Summary ---
+DCKmeans Time: 0.001 s
+GA Time     : 72.123 s
+Total Time  : 72.124 s
+
+=== Run 10 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 320.291
+UAV 1: 73.665
+UAV 2: 327.177
+Total raw: 721.132500399342
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 139.372
+UAV 1: 73.978
+UAV 2: 146.061
+Total optimized: 359.4114729549982
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 71.393 s
+Total Time  : 71.393 s
+
+===========================================================================
+AGGREGATE SUMMARY (10 runs)
+Total optimized path length : min=359.083  max=364.171  mean=360.807
+GA Time range               : 61.420 s – 74.091 s
+GA Time mean                : 70.758 s

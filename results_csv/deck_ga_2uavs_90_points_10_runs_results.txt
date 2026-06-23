@@ -119,6 +119,7 @@ Total Time  : 81.853 s
 UAV 0: 719.990
 UAV 1: 948.788
 Total raw: 1668.777849215599
+
 --- Optimized Path Lengths (after GA, shifted) ---
 UAV 0: 203.546
 UAV 1: 231.339

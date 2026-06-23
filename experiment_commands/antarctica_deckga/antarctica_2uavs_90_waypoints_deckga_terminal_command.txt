@@ -210,7 +210,7 @@ source /opt/ros/humble/setup.bash
 source ~/as2_harmonic_ws/install/setup.bash
 
 python3 deckga_ros2/rviz_paths_node_antarctica.py \
-  --deckga_pkl deckga_ros2/data/deckga_output_antarctica_90_uav2.pkl \
+  --deckga_pkl deckga_ros2/data/deckga_output_antarctica_90_uav2_ex1.pkl \
   --num_uavs 2 \
   --coord_mode auto \
   --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
@@ -240,7 +240,9 @@ python3 deckga_ros2/drone_pairwise_distance_logger.py \
   --rate_hz 10 \
   --print_every_s 1.0 \
   --log_dir results_antarctica_csv \
-  --run_tag 90pts_uav2_pairwise_distance_test_run_1
+  --run_tag ex1_90pts_uav2_pairwise_distance_test_run_1
+
+"ex${N}_90pts_uav2_pairwise_distance_run_${N}"
 
 Leave this running. Press Ctrl+C after the mission ends to save the pairwise summary.
 
@@ -251,7 +253,7 @@ source /opt/ros/humble/setup.bash
 source ~/as2_harmonic_ws/install/setup.bash
 
 python3 deckga_ros2/deckga_execute_antarctica.py \
-  --deckga_pkl deckga_ros2/data/deckga_output_antarctica_90_uav2.pkl \
+  --deckga_pkl deckga_ros2/data/deckga_output_antarctica_90_uav2_ex1.pkl \
   --namespaces drone0,drone1 \
   --coord_mode auto \
   --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
@@ -270,7 +272,7 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --ensure_reach \
   --wp_settle_s 0.3 \
   --log_dir results_antarctica_csv \
-  --run_tag aspa135_90pts_uav2_deckga_test_run_1
+  --run_tag ex1_90pts_uav2_deckga_test_run_1
 
 
 Terminal 10 — Check output CSVs
