@@ -1,92 +1,76 @@
 # Experiment Progress Notes
-Last updated: 2026-06-24
+Last updated: 2026-06-25
 
 ---
 
 ## 1. Experiment Status
 
-### 2 UAVs — 30 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_30_points_10_runs_results.txt` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav2_30pts.txt` |
-
+### 2 UAVs — 30 Waypoints ✓
 Results: optimized total = 283.965 m, mission makespan mean = 128.4 s, min pairwise mean = 1.715 m.
 
-### 2 UAVs — 60 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_60_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav2_60pts.txt` |
-
+### 2 UAVs — 60 Waypoints ✓
 Results: optimized total = 370.698 m, mission makespan mean = 164.4 s, min pairwise mean = 2.476 m.
 
-### 2 UAVs — 90 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_90_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav2_90pts.txt` |
-
+### 2 UAVs — 90 Waypoints ✓
 Results: optimized total = 434.885 m, mission makespan mean = 211.6 s, min pairwise mean = 0.839 m.
 
-### 2 UAVs — 120 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_2uavs_120_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav2_120pts.txt` |
-
+### 2 UAVs — 120 Waypoints ✓
 Results: optimized total = 450.477 m, mission makespan mean = 268.7 s, min pairwise mean = 1.392 m.
 
 ---
 
-### 3 UAVs — 30 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_3uavs_30_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav3_30pts.txt` |
-
+### 3 UAVs — 30 Waypoints ✓
 Start points: `4.00,8.00,32.31 ; 7.00,6.00,32.09 ; 5.50,4.00,32.20`
-Results: planned total = 302.686 m (identical all runs), mission makespan mean = 86.580 s, min pairwise mean = 1.692 m.
+Results: planned total = 302.686 m, mission makespan mean = 86.580 s, min pairwise mean = 1.692 m.
 
-### 3 UAVs — 60 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_3uavs_60_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav3_60pts.txt` |
-
+### 3 UAVs — 60 Waypoints ✓
 Start points: `4.00,8.00,32.31 ; 7.00,6.00,32.09 ; 5.50,4.00,32.20`
 Results: planned total mean = 338.703 m, mission makespan mean = 125.610 s, min pairwise mean = 1.559 m.
 
-### 3 UAVs — 90 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_3uavs_90_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav3_90pts.txt` |
-
+### 3 UAVs — 90 Waypoints ✓
 Start points: `5.50,4.00,32.20 ; 7.00,6.00,32.09 ; 4.00,8.00,32.31`
 Results: planned total mean = 381.681 m, mission makespan mean = 156.213 s, min pairwise mean = 1.510 m.
 
-### 3 UAVs — 120 Waypoints
-| Stage | Status |
-|---|---|
-| DECK-GA planner 10 runs | COMPLETE — `results_csv/deck_ga_3uavs_120_points_10_runs_results.txt`, PKLs ex1–ex10 in `deckga_ros2/data/` |
-| Gazebo flight 10 runs | COMPLETE — all CSVs in `results_antarctica_csv/` |
-| Summary table | COMPLETE — `results_csv/summary_table_uav3_120pts.txt` |
-
+### 3 UAVs — 120 Waypoints ✓
 Start points: `7.00,6.00,32.09 ; 5.50,4.00,32.20 ; 4.00,8.00,32.31`
 Results: planned total mean = 438.334 m, mission makespan mean = 184.028 s, min pairwise mean = 1.952 m.
 
 ---
 
-### 4 UAVs — 30 / 60 / 90 / 120 Waypoints — NOT STARTED
-### 5 UAVs — 30 / 60 / 90 / 120 Waypoints — NOT STARTED
+### 4 UAVs — 30 Waypoints ✓
+Start points (DECK-GA planning): `4.00,8.00,32.31 ; 7.00,6.00,32.09 ; 4.00,4.00,32.20 ; 7.00,4.00,32.00`
+Gazebo spawn (drone3 z=32.50 for visibility): drone3 xyz = 7.00, 4.00, 32.50
+zin_min=32.00, zin_max=39.98
+Results: GA opt=367.102 m (identical), mission makespan mean=77.011 s, dist=349.888 m, pairwise mean=1.729 m.
+
+### 4 UAVs — 60 Waypoints ✓
+Start points (DECK-GA planning): `7.00,4.00,32.00 ; 7.00,8.00,32.09 ; 4.00,8.00,32.31 ; 4.00,4.00,32.20`
+Gazebo spawn (drone3 z=32.50 for visibility): drone3 xyz = 4.00, 4.00, 32.50
+zin_min=32.00, zin_max=39.98
+Results: GA opt=380.409 m (identical), mission makespan mean=122.442 s, dist=353.861 m, pairwise mean=2.938 m.
+
+### 4 UAVs — 90 Waypoints ✓
+Start points (DECK-GA planning): `4.00,4.00,32.50 ; 7.00,8.00,32.09 ; 4.00,8.00,32.31 ; 7.00,4.00,32.00`
+Gazebo spawn (drone3 z=32.50 for visibility): drone3 xyz = 7.00, 4.00, 32.50
+zin_min=32.00, zin_max=39.99
+Results: GA opt mean=423.276 m, mission makespan mean=150.932 s, dist=386.388 m, pairwise mean=2.853 m.
+
+### 4 UAVs — 120 Waypoints ✓
+Start points: `7.00,8.00,32.09 ; 4.00,4.00,32.50 ; 4.00,8.00,32.31 ; 7.00,4.00,32.50`
+zin_min=32.09, zin_max=39.99
+Results: GA opt mean=476.862 m, mission makespan mean=185.592 s, dist=435.014 m, pairwise mean=1.494 m.
+
+---
+
+### 5 UAVs — 30 Waypoints ✓
+Start points (DECK-GA planning + Gazebo spawn):
+`4.50,6.00,32.80 ; 8.00,6.00,32.80 ; 4.60,2.50,32.80 ; 8.00,2.50,32.20 ; 2.50,3.50,33.20`
+zin_min=32.20, zin_max=39.98
+Results: GA opt=400.359 m (identical), mission makespan mean=76.641 s, dist=387.595 m, pairwise mean=1.497 m.
+
+### 5 UAVs — 60 Waypoints — NEXT
+### 5 UAVs — 90 Waypoints — PENDING
+### 5 UAVs — 120 Waypoints — PENDING
 
 ---
 
@@ -95,15 +79,15 @@ Results: planned total mean = 438.334 m, mission makespan mean = 184.028 s, min 
 ```
 2-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
 3-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
-4-UAV:  30 _   60 _   90 _   120 _
-5-UAV:  30 _   60 _   90 _   120 _
+4-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
+5-UAV:  30 ✓   60 _   90 _   120 _
 
-Completed: 8 of 16 configurations
+Completed: 13 of 16 configurations
 ```
 
 ---
 
-## 3. Proven Pipeline (replicate for 4/5 UAVs)
+## 3. Proven Pipeline (replicate for each config)
 
 | Step | Script / Command |
 |---|---|
@@ -122,19 +106,27 @@ drone1:  x=4.50,  y=4.24,  z=32.09
 --start_points="7.00,4.24,32.31;4.50,4.24,32.09"
 ```
 
-### 4.2 — 3-UAV Configs (start points differ per waypoint count — see Section 1)
+### 4.2 — 3-UAV Configs
 Depot box used: x:4–7, y:4–8, z:32.00–32.99, all pairs ≥ 2 m apart.
+See Section 1 for per-waypoint-count start points.
+
+### 4.3 — 4-UAV Configs
+Config in `world_swarm_4.yaml`. Drone3 Gazebo spawn z always set to 32.50 for visibility.
+See Section 1 for per-waypoint-count start points.
+
+### 4.4 — 5-UAV Configs
+Config in `world_swarm_5.yaml`. Positions use wider spacing (x up to 8.00).
+See Section 1 for per-waypoint-count start points.
 
 ---
 
-## 5. CRITICAL: Start Point Assignment for 4-UAV and 5-UAV
+## 5. CRITICAL: Start Point Assignment
 
-**Each waypoint count produces different DCKmeans cluster geometry, so depot-to-drone-index assignment differs per config. NEVER reuse start points from one waypoint count for another without verifying.**
+**Each waypoint count produces different DCKmeans cluster geometry. NEVER reuse start points from one waypoint count for another without verifying.**
 
 ### Procedure for each new (N-UAV, W-waypoint) config:
-
-1. Run planner once with any valid start points (all in box x:4–7, y:4–8, z:32–32.99, pairs ≥ 2 m apart).
-2. Run the region-printing script below to get UAV index → cluster region mapping.
+1. Run planner once with trial start points (read from `world_swarm_N.yaml`).
+2. Run the region-printing script to get UAV index → cluster region mapping.
 3. Assign each drone the depot corner pointing toward its cluster.
 4. Verify with plot — no path crossings before running 10x.
 
@@ -147,64 +139,76 @@ p = "deckga_ros2/data/YOUR_TEST_PKL.pkl"
 with open(p, "rb") as f:
     d = pickle.load(f)
 
-paths = d["deckga_paths"]
-for i, P in enumerate(paths):
+paths    = d["deckga_paths"]
+centroids = np.array(d["centroids"])
+offset   = np.array(d["offset_used"])
+
+for i, (c, P) in enumerate(zip(centroids, paths)):
     P = np.asarray(P, dtype=float)
-    wp = P[1:]
-    cx, cy = wp[:,0].mean(), wp[:,1].mean()
+    cx = c[0] - offset[0]
+    cy = c[1] - offset[1]
+    depot_x = P[0, 0]
+    depot_y = P[0, 1]
+    depot_z = P[0, 2]
     region = ""
-    region += "N" if cy > 8 else ("S" if cy < -8 else "")
-    region += "E" if cx > 8 else ("W" if cx < -8 else "")
-    print(f"UAV{i}: start=({P[0,0]:.2f},{P[0,1]:.2f})  cluster_center=({cx:.2f},{cy:.2f})  region={region or 'center'}")
+    if cy > 10:   region += "N"
+    elif cy < -10: region += "S"
+    if cx > 10:   region += "E"
+    elif cx < -10: region += "W"
+    if not region: region = "C"
+    print(f"UAV {i}: region={region:<3}  cluster_center=({cx:+.1f},{cy:+.1f})  depot=({depot_x:.2f},{depot_y:.2f},{depot_z:.2f})  waypoints={len(P)-2}")
 PY
 ```
 
-### Depot box constraints:
-- All depots: x:4–7, y:4–8, z:32.00–32.99
-- All pairs ≥ 2 m apart
-- 4-UAV: need 4 depots in box — tight but possible
-- 5-UAV: need 5 depots — requires careful geometry
+---
+
+## 6. Next Session — 5-UAV 60 / 90 / 120 Waypoints
+
+### To resume exactly where you left off:
+
+**Step 1 — Open terminal, go to project:**
+```bash
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+git status   # confirm on branch: antarctica
+```
+
+**Step 2 — Start 5-UAV 60pt (same pipeline as 30pt):**
+
+```bash
+# Check existing command file for reference
+cat experiment_commands/antarctica_deckga/antarctica_5uavs_60_waypoints_deckga_terminal_command.txt
+
+# Run a single trial with world_swarm_5.yaml positions
+python3 DECK_GA.py \
+  --points_pkl "data/points/antarctica_aspa135_m3_60_points.pkl" \
+  --num_uavs 5 \
+  --start_points="4.50,6.00,32.80;8.00,6.00,32.80;4.60,2.50,32.80;8.00,2.50,32.20;2.50,3.50,33.20" \
+  --out_pkl "deckga_ros2/data/deckga_output_antarctica_60_uav5_trial.pkl" \
+  --save_fig_dir "results_antarctica"
+```
+
+**Step 3 — Check regions and verify plot (no crossings).**
+
+**Step 4 — Lock in start points, update:**
+- `world_swarm_5.yaml`
+- `run_deckga_10x_5uav_60pts.sh`
+- `run_data_runs_uav5_60pts.sh`
+- `experiment_commands/antarctica_deckga/antarctica_5uavs_60_waypoints_deckga_terminal_command.txt`
+
+**Step 5 — Run 10x DECK-GA, then 10x Gazebo flights, then summary table, then commit+push.**
 
 ---
 
-## 6. What Changes for 4 / 5 UAVs
+## 7. Key Files Reference
 
-### 6.1 Start Points — Read from the correct YAML first
-Each UAV count has its own world swarm config:
-- 4 UAVs → `project_gazebo/config/world_swarm_4.yaml`
-- 5 UAVs → `project_gazebo/config/world_swarm_5.yaml`
-
-**Before building any script for N UAVs:** read `world_swarm_N.yaml`, extract all spawn xyz coordinates, and use those exact values for `--start_points` and `--num_uavs N` in DECK_GA. Do NOT reuse start points from another UAV count or waypoint count.
-
-### 6.2 Pairwise Distance Logger
-Must cover all drones. Examples:
-- 4 UAVs: `--topics /drone0/.../pose,...,/drone3/.../pose --names drone0,drone1,drone2,drone3`
-- 5 UAVs: add `/drone4/ground_truth/pose` and `drone4`
-
-### 6.3 Flight Runner Script
-All of these arrays must include every drone (drone0..droneN-1):
-- `LIVE_POSE_TOPICS`
-- `REQUIRED_ACTIONS` (TakeoffBehavior, GoToBehavior, LandBehavior, FollowPathBehavior for each drone)
-- `TMUX_SESSIONS`
-- `--namespaces` passed to the executor
-
-### 6.4 z-range and Timing Flags
-Verify per configuration from each command file Terminal 9. Do not assume they carry over. Speed is fixed at **1.9 m/s** across all configurations.
-
----
-
-## 7. Next Session — 4 UAVs (all 4 waypoint counts)
-
-1. Confirm `world_swarm_4.yaml` exists and has 4 drone entries with valid depot positions.
-2. For each waypoint count (30/60/90/120):
-   a. Run planner once with trial start points → run region-printing script → assign correct depots.
-   b. Build `run_deckga_10x_4uav_{WPTS}pts.sh` with correct `--start_points` and `--num_uavs 4`.
-   c. Run it 10x to generate PKLs ex1–ex10.
-   d. Build `run_data_runs_uav4_{WPTS}pts.sh` — add drone3 to all arrays.
-   e. Test with single run: `bash run_data_runs_uav4_{WPTS}pts.sh 1 1`
-   f. Verify run is GOOD, then batch runs 2–10.
-   g. Run `python3 make_summary_table.py {WPTS} 4`.
-3. Repeat for 5 UAVs.
+| Purpose | File |
+|---|---|
+| 5-UAV world config | `aerostack_examples/.../config/world_swarm_5.yaml` |
+| 5-UAV 30pt DECK-GA script | `run_deckga_10x_5uav_30pts.sh` |
+| 5-UAV 30pt flight script | `run_data_runs_uav5_30pts.sh` |
+| Summary table generator | `make_summary_table.py {WPTS} {N}` |
+| Results CSVs | `results_antarctica_csv/` |
+| Summary tables | `results_csv/summary_table_uav{N}_{WPTS}pts.txt` |
 
 ---
 
@@ -212,16 +216,10 @@ Verify per configuration from each command file Terminal 9. Do not assume they c
 
 **GOOD run:** pairwise max climbs well past 40 m AND total executed distance ≈ planner's expected total.
 
-**FAILED run:** pairwise max stays flat and low (< 5 m) — drones never separated, likely a takeoff/arming failure due to stale Gazebo state.
+**FAILED run:** pairwise max stays flat and low (< 5 m) — drones never separated.
 
-Quick check after each run:
 ```bash
 python3 make_summary_table.py <waypoints> <uavs>
-```
-
-Or inspect the latest pairwise summary CSV directly:
-```bash
+# or inspect latest pairwise CSV:
 ls -t results_antarctica_csv/*pairwise_distance_summary* | head -1 | xargs cat
 ```
-
-If a run fails, close the terminal, open a fresh one, and re-run that single run number.
