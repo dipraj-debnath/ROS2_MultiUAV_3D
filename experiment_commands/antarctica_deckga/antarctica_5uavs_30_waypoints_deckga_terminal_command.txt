@@ -47,7 +47,7 @@ drones:
     flight_time: 60
     xyz:
       - 4.50
-      - 5.80
+      - 6.00
       - 32.80
     payload:
       - model_type: "gps"
@@ -57,8 +57,8 @@ drones:
     model_name: "drone1"
     flight_time: 60
     xyz:
-      - 7.50
-      - 5.80
+      - 8.00
+      - 6.00
       - 32.80
     payload:
       - model_type: "gps"
@@ -68,8 +68,8 @@ drones:
     model_name: "drone2"
     flight_time: 60
     xyz:
-      - 4.50
-      - 2.80
+      - 4.60
+      - 2.50
       - 32.80
     payload:
       - model_type: "gps"
@@ -79,9 +79,9 @@ drones:
     model_name: "drone3"
     flight_time: 60
     xyz:
-      - 7.50
-      - 2.80
-      - 32.80
+      - 8.00
+      - 2.50
+      - 32.20
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -90,8 +90,8 @@ drones:
     model_name: "drone4"
     flight_time: 60
     xyz:
-      - 6.00
-      - 4.30
+      - 2.50
+      - 3.50
       - 33.20
     payload:
       - model_type: "gps"
@@ -154,7 +154,7 @@ cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 python3 DECK_GA.py \
   --points_pkl "data/points/antarctica_aspa135_m3_30_points.pkl" \
   --num_uavs 5 \
-  --start_points="4.50,5.80,32.80;7.50,5.80,32.80;4.50,2.80,32.80;7.50,2.80,32.80;6.00,4.30,33.20" \
+  --start_points="4.50,6.00,32.80;8.00,6.00,32.80;4.60,2.50,32.80;8.00,2.50,32.20;2.50,3.50,33.20" \
   --out_pkl "deckga_ros2/data/deckga_output_antarctica_30_uav5.pkl" \
   --save_fig_dir "results_antarctica"
 
