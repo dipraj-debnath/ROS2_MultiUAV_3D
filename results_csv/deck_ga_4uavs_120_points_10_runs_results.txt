@@ -1,0 +1,189 @@
+DECK-GA | 4 UAVs | 120 Waypoints | 10 Runs Results
+antarctica_aspa135_m3 | start_points: 7.00,8.00,32.09 ; 4.00,4.00,32.50 ; 4.00,8.00,32.31 ; 7.00,4.00,32.50
+===========================================================================
+
+=== Run 1 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 89.200
+UAV 1: 107.498
+UAV 2: 193.225
+UAV 3: 87.183
+Total optimized: 477.10626332175644
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 129.822 s
+Total Time  : 129.823 s
+
+=== Run 2 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 89.200
+UAV 1: 107.353
+UAV 2: 192.031
+UAV 3: 87.183
+Total optimized: 475.76799314066017
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 66.483 s
+Total Time  : 66.484 s
+
+=== Run 3 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 89.200
+UAV 1: 107.353
+UAV 2: 192.031
+UAV 3: 87.183
+Total optimized: 475.76799314066017
+--- Summary ---
+DCKmeans Time: 0.001 s
+GA Time     : 67.141 s
+Total Time  : 67.142 s
+
+=== Run 4 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 89.200
+UAV 1: 107.353
+UAV 2: 192.031
+UAV 3: 87.183
+Total optimized: 475.76799314066017
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 66.712 s
+Total Time  : 66.713 s
+
+=== Run 5 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 89.200
+UAV 1: 107.353
+UAV 2: 192.031
+UAV 3: 87.183
+Total optimized: 475.76799314066017
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 68.350 s
+Total Time  : 68.350 s
+
+=== Run 6 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 90.254
+UAV 1: 107.353
+UAV 2: 194.062
+UAV 3: 87.435
+Total optimized: 479.1039973890634
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 87.771 s
+Total Time  : 87.772 s
+
+=== Run 7 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 90.254
+UAV 1: 120.203
+UAV 2: 182.072
+UAV 3: 87.183
+Total optimized: 479.7124583392793
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 43.999 s
+Total Time  : 44.000 s
+
+=== Run 8 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 92.446
+UAV 1: 107.353
+UAV 2: 188.431
+UAV 3: 87.183
+Total optimized: 475.4136602794497
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 105.823 s
+Total Time  : 105.823 s
+
+=== Run 9 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 89.200
+UAV 1: 107.498
+UAV 2: 193.225
+UAV 3: 87.183
+Total optimized: 477.10626332175644
+--- Summary ---
+DCKmeans Time: 0.000 s
+GA Time     : 130.971 s
+Total Time  : 130.972 s
+
+=== Run 10 / 10 ===
+--- Raw Path Lengths (before GA, shifted) ---
+UAV 0: 118.001
+UAV 1: 282.543
+UAV 2: 403.494
+UAV 3: 93.252
+Total raw: 897.2903564848598
+--- Optimized Path Lengths (after GA, shifted) ---
+UAV 0: 89.200
+UAV 1: 107.498
+UAV 2: 193.225
+UAV 3: 87.183
+Total optimized: 477.10626332175644
+--- Summary ---
+DCKmeans Time: 0.001 s
+GA Time     : 130.854 s
+Total Time  : 130.855 s
+
+===========================================================================
+AGGREGATE SUMMARY (10 runs)
+Total optimized path length : min=475.414  max=479.712  mean=476.862
+GA Time range               : 43.999 s – 130.971 s
+GA Time mean                : 89.793 s
