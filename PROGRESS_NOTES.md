@@ -74,8 +74,13 @@ Start points (DECK-GA planning + Gazebo spawn):
 zin_min=32.60, zin_max=39.97
 Results: GA opt=415.090m (identical), mission makespan mean=104.786s, dist=393.271m, pairwise mean=1.941m.
 
-### 5 UAVs — 90 Waypoints — NEXT
-### 5 UAVs — 120 Waypoints — PENDING
+### 5 UAVs — 90 Waypoints ✓
+Start points (DECK-GA planning + Gazebo spawn):
+`4.50,2.50,32.90 ; 8.00,8.00,32.70 ; 4.50,8.00,32.80 ; 8.00,4.50,32.60 ; 6.00,5.00,32.99`
+zin_min=32.60, zin_max=39.99
+Results: GA opt mean=455.308m, mission makespan mean=102.708s, dist=419.607m, pairwise mean=1.907m.
+
+### 5 UAVs — 120 Waypoints — NEXT
 
 ---
 
@@ -85,9 +90,9 @@ Results: GA opt=415.090m (identical), mission makespan mean=104.786s, dist=393.2
 2-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
 3-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
 4-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
-5-UAV:  30 ✓   60 ✓   90 _   120 _
+5-UAV:  30 ✓   60 ✓   90 ✓   120 _
 
-Completed: 14 of 16 configurations
+Completed: 15 of 16 configurations
 ```
 
 ---
@@ -167,7 +172,7 @@ PY
 
 ---
 
-## 6. Next Session — 5-UAV 60 / 90 / 120 Waypoints
+## 6. Next Session — 5-UAV 120 Waypoints
 
 ### To resume exactly where you left off:
 
@@ -177,15 +182,15 @@ cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 git status   # confirm on branch: antarctica
 ```
 
-**Step 2 — Start 5-UAV 90pt (same pipeline as 60pt):**
+**Step 2 — Start 5-UAV 120pt trial:**
 
 ```bash
 # Run a single trial with current world_swarm_5.yaml positions
 python3 DECK_GA.py \
-  --points_pkl "data/points/antarctica_aspa135_m3_90_points.pkl" \
+  --points_pkl "data/points/antarctica_aspa135_m3_120_points.pkl" \
   --num_uavs 5 \
-  --start_points="8.00,4.50,32.60;8.00,8.00,32.70;4.50,8.00,32.80;4.50,2.50,32.90;6.00,5.00,32.99" \
-  --out_pkl "deckga_ros2/data/deckga_output_antarctica_90_uav5_trial.pkl" \
+  --start_points="4.50,2.50,32.90;8.00,8.00,32.70;4.50,8.00,32.80;8.00,4.50,32.60;6.00,5.00,32.99" \
+  --out_pkl "deckga_ros2/data/deckga_output_antarctica_120_uav5_trial.pkl" \
   --save_fig_dir "results_antarctica"
 ```
 
@@ -193,9 +198,9 @@ python3 DECK_GA.py \
 
 **Step 4 — Lock in start points, update:**
 - `world_swarm_5.yaml`
-- `run_deckga_10x_5uav_90pts.sh`
-- `run_data_runs_uav5_90pts.sh`
-- `experiment_commands/antarctica_deckga/antarctica_5uavs_90_waypoints_deckga_terminal_command.txt`
+- `run_deckga_10x_5uav_120pts.sh`
+- `run_data_runs_uav5_120pts.sh`
+- `experiment_commands/antarctica_deckga/antarctica_5uavs_120_waypoints_deckga_terminal_command.txt`
 
 **Step 5 — Run 10x DECK-GA, then 10x Gazebo flights, then summary table, then commit+push.**
 
