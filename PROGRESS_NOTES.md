@@ -80,7 +80,11 @@ Start points (DECK-GA planning + Gazebo spawn):
 zin_min=32.60, zin_max=39.99
 Results: GA opt mean=455.308m, mission makespan mean=102.708s, dist=419.607m, pairwise mean=1.907m.
 
-### 5 UAVs — 120 Waypoints — NEXT
+### 5 UAVs — 120 Waypoints ✓
+Start points (DECK-GA planning + Gazebo spawn):
+`8.00,8.00,32.70 ; 4.50,2.50,32.90 ; 4.50,8.00,32.80 ; 8.00,4.50,32.60 ; 6.00,5.00,32.99`
+zin_min=32.60, zin_max=39.99
+Results: GA opt mean=510.384m, mission makespan mean=174.459s, dist=469.238m, pairwise mean=1.938m.
 
 ---
 
@@ -90,9 +94,9 @@ Results: GA opt mean=455.308m, mission makespan mean=102.708s, dist=419.607m, pa
 2-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
 3-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
 4-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
-5-UAV:  30 ✓   60 ✓   90 ✓   120 _
+5-UAV:  30 ✓   60 ✓   90 ✓   120 ✓
 
-Completed: 15 of 16 configurations
+Completed: 16 of 16 configurations — ALL DONE
 ```
 
 ---
@@ -172,37 +176,28 @@ PY
 
 ---
 
-## 6. Next Session — 5-UAV 120 Waypoints
+## 6. Experiment Complete
 
-### To resume exactly where you left off:
+All 16 configurations finished. Summary tables saved in `results_csv/`.
 
-**Step 1 — Open terminal, go to project:**
-```bash
-cd ~/Documents/GitHub/ROS2_MultiUAV_3D
-git status   # confirm on branch: antarctica
-```
-
-**Step 2 — Start 5-UAV 120pt trial:**
-
-```bash
-# Run a single trial with current world_swarm_5.yaml positions
-python3 DECK_GA.py \
-  --points_pkl "data/points/antarctica_aspa135_m3_120_points.pkl" \
-  --num_uavs 5 \
-  --start_points="4.50,2.50,32.90;8.00,8.00,32.70;4.50,8.00,32.80;8.00,4.50,32.60;6.00,5.00,32.99" \
-  --out_pkl "deckga_ros2/data/deckga_output_antarctica_120_uav5_trial.pkl" \
-  --save_fig_dir "results_antarctica"
-```
-
-**Step 3 — Check regions and verify plot (no crossings).**
-
-**Step 4 — Lock in start points, update:**
-- `world_swarm_5.yaml`
-- `run_deckga_10x_5uav_120pts.sh`
-- `run_data_runs_uav5_120pts.sh`
-- `experiment_commands/antarctica_deckga/antarctica_5uavs_120_waypoints_deckga_terminal_command.txt`
-
-**Step 5 — Run 10x DECK-GA, then 10x Gazebo flights, then summary table, then commit+push.**
+| Config | planned_makespan_s (mean) | mission_makespan_s (mean) | dist_m (mean) | pairwise_m (mean) |
+|--------|--------------------------|--------------------------|---------------|-------------------|
+| 2-UAV 30pt | — | 128.4 | 283.965 | 1.715 |
+| 2-UAV 60pt | — | 164.4 | 370.698 | 2.476 |
+| 2-UAV 90pt | — | 211.6 | 434.885 | 0.839 |
+| 2-UAV 120pt | — | 268.7 | 450.477 | 1.392 |
+| 3-UAV 30pt | — | 86.580 | 302.686 | 1.692 |
+| 3-UAV 60pt | — | 125.610 | 338.703 | 1.559 |
+| 3-UAV 90pt | — | 156.213 | 381.681 | 1.510 |
+| 3-UAV 120pt | — | 184.028 | 438.334 | 1.952 |
+| 4-UAV 30pt | — | 77.011 | 349.888 | 1.729 |
+| 4-UAV 60pt | — | 122.442 | 353.861 | 2.938 |
+| 4-UAV 90pt | — | 150.932 | 386.388 | 2.853 |
+| 4-UAV 120pt | — | 185.592 | 435.014 | 1.494 |
+| 5-UAV 30pt | — | 76.641 | 387.595 | 1.497 |
+| 5-UAV 60pt | 63.537 | 104.786 | 393.271 | 1.941 |
+| 5-UAV 90pt | 60.312 | 102.708 | 419.607 | 1.907 |
+| 5-UAV 120pt | 80.107 | 174.459 | 469.238 | 1.938 |
 
 ---
 
