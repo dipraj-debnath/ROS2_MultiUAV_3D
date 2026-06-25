@@ -1,5 +1,5 @@
 # Experiment Progress Notes
-Last updated: 2026-06-25
+Last updated: 2026-06-26
 
 ---
 
@@ -201,7 +201,57 @@ All 16 configurations finished. Summary tables saved in `results_csv/`.
 
 ---
 
-## 7. Key Files Reference
+## 7. Benchmarking Phase — NEXT (starting 2026-06-27)
+
+All 16 DECK-GA configurations are complete. The next phase benchmarks DECK-GA results against two baseline algorithms across the same 16 configs (2/3/4/5 UAVs × 30/60/90/120 waypoints).
+
+### Algorithms to benchmark
+
+| Algorithm | Script | Description |
+|-----------|--------|-------------|
+| Traditional GA Divide & Conquer | `DEGA_Divide & Conquer/Traditional_GA_Divide & Conquer.py` | Divide-and-conquer GA without DCKmeans clustering |
+| Classical KMeans DEGA | `Classical_Kmeans.py` + `run_kmeans_GA_10_times.py` | Standard KMeans clustering + GA path planning |
+
+### Terminal command files (Traditional GA D&C) — already exist
+```
+experiment_commands/antarctica_deckga/traditional_ga_divide_conquer_{N}uavs_{WPTS}_waypoints_terminal_command.txt
+```
+Example for 2-UAV 30pt:
+`traditional_ga_divide_conquer_2uavs_30_waypoints_terminal_command.txt`
+
+### Resume guide
+
+**Step 1 — Start with Traditional GA D&C, 2-UAV 30-waypoint:**
+```bash
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+git status   # confirm on branch: antarctica
+cat experiment_commands/antarctica_deckga/traditional_ga_divide_conquer_2uavs_30_waypoints_terminal_command.txt
+```
+
+**Step 2 — Follow same pipeline as DECK-GA:**
+- Run planner 10x (adapt script from `run_deckga_10x_` pattern)
+- Run 10x Gazebo flights
+- Generate summary table
+- Commit + push
+
+**Step 3 — Repeat for all 16 configs, then repeat for Classical KMeans DEGA.**
+
+### Benchmark completion tracker
+```
+Traditional GA D&C:   2-UAV: 30 _  60 _  90 _  120 _
+                      3-UAV: 30 _  60 _  90 _  120 _
+                      4-UAV: 30 _  60 _  90 _  120 _
+                      5-UAV: 30 _  60 _  90 _  120 _
+
+Classical KMeans DEGA: 2-UAV: 30 _  60 _  90 _  120 _
+                       3-UAV: 30 _  60 _  90 _  120 _
+                       4-UAV: 30 _  60 _  90 _  120 _
+                       5-UAV: 30 _  60 _  90 _  120 _
+```
+
+---
+
+## 8. Key Files Reference
 
 | Purpose | File |
 |---|---|
