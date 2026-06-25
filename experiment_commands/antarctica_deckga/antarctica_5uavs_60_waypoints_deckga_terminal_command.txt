@@ -22,7 +22,7 @@ cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_pro
 
 cat > config/world_swarm_5.yaml << 'YAML'
 world_name: "aspa135_m3"
-origin: 
+origin:
     latitude: -66.28223056
     longitude: 110.53892500
     altitude: 30.19
@@ -32,9 +32,9 @@ drones:
     model_name: "drone0"
     flight_time: 60
     xyz:
-      - 7.50
-      - 5.80
-      - 32.80
+      - 8.00
+      - 4.50
+      - 32.60
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -43,9 +43,9 @@ drones:
     model_name: "drone1"
     flight_time: 60
     xyz:
-      - 4.50
-      - 5.80
-      - 32.80
+      - 8.00
+      - 8.00
+      - 32.70
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -55,7 +55,7 @@ drones:
     flight_time: 60
     xyz:
       - 4.50
-      - 2.80
+      - 8.00
       - 32.80
     payload:
       - model_type: "gps"
@@ -65,9 +65,9 @@ drones:
     model_name: "drone3"
     flight_time: 60
     xyz:
-      - 7.50
-      - 2.80
-      - 32.80
+      - 4.50
+      - 2.50
+      - 32.90
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -77,8 +77,8 @@ drones:
     flight_time: 60
     xyz:
       - 6.00
-      - 4.30
-      - 33.20
+      - 5.00
+      - 32.99
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -157,7 +157,7 @@ cd ~/Documents/GitHub/ROS2_MultiUAV_3D
 python3 DECK_GA.py \
   --points_pkl "data/points/antarctica_aspa135_m3_60_points.pkl" \
   --num_uavs 5 \
-  --start_points="7.50,5.80,32.80;4.50,5.80,32.80;4.50,2.80,32.80;7.50,2.80,32.80;6.00,4.30,33.20" \
+  --start_points="8.00,4.50,32.60;8.00,8.00,32.70;4.50,8.00,32.80;4.50,2.50,32.90;6.00,5.00,32.99" \
   --out_pkl "deckga_ros2/data/deckga_output_antarctica_60_uav5.pkl" \
   --save_fig_dir "results_antarctica"
   
@@ -203,7 +203,7 @@ import numpy as np
 
 p = "deckga_ros2/data/deckga_output_antarctica_60_uav5.pkl"
 
-zin_min = 32.80
+zin_min = 32.60
 zin_max = 39.97
 zout_min = 3.80
 zout_max = 6.80
@@ -292,7 +292,7 @@ python3 deckga_ros2/rviz_paths_node_antarctica.py \
   --num_uavs 5 \
   --coord_mode auto \
   --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
-  --zin_min 32.80 --zin_max 39.97 \
+  --zin_min 32.60 --zin_max 39.97 \
   --zout_min 3.80 --zout_max 6.80 \
   --z_base 32.2 \
   --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
@@ -333,7 +333,7 @@ python3 deckga_ros2/deckga_execute_antarctica.py \
   --namespaces drone0,drone1,drone2,drone3,drone4 \
   --coord_mode auto \
   --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
-  --zin_min 32.80 --zin_max 39.97 \
+  --zin_min 32.60 --zin_max 39.97 \
   --zout_min 3.80 --zout_max 6.80 \
   --z_base 32.2 \
   --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
