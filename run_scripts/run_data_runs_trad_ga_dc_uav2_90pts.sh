@@ -121,34 +121,48 @@ do_cleanup() {
     done
     tmux kill-server 2>/dev/null || true
 
+    # SIGTERM pass
     pkill -u "$USER" -f "deckga_execute_antarctica.py"      2>/dev/null || true
     pkill -u "$USER" -f "rviz_paths_node_antarctica.py"     2>/dev/null || true
     pkill -u "$USER" -f "drone_pairwise_distance_logger.py" 2>/dev/null || true
-
-    pkill -u "$USER" -f rviz2 2>/dev/null || true
-
+    pkill -u "$USER" -f rviz2      2>/dev/null || true
     pkill -u "$USER" -f "gz sim"   2>/dev/null || true
     pkill -u "$USER" -x gzserver   2>/dev/null || true
     pkill -u "$USER" -x gzclient   2>/dev/null || true
     pkill -u "$USER" -f gazebo     2>/dev/null || true
-
     pkill -u "$USER" -f "as2_"         2>/dev/null || true
     pkill -u "$USER" -f "aerostack"    2>/dev/null || true
-
+    pkill -u "$USER" -f "drone._interface" 2>/dev/null || true
     pkill -u "$USER" -f "MicroXRCEAgent" 2>/dev/null || true
     pkill -u "$USER" -f "micro.xrce"     2>/dev/null || true
     pkill -u "$USER" -f "uxr_agent"      2>/dev/null || true
 
+    sleep 5
+
+    # SIGKILL pass — force-kill anything still alive
+    pkill -9 -u "$USER" -f "deckga_execute_antarctica.py"      2>/dev/null || true
+    pkill -9 -u "$USER" -f "drone_pairwise_distance_logger.py" 2>/dev/null || true
+    pkill -9 -u "$USER" -f "gz sim"   2>/dev/null || true
+    pkill -9 -u "$USER" -x gzserver   2>/dev/null || true
+    pkill -9 -u "$USER" -x gzclient   2>/dev/null || true
+    pkill -9 -u "$USER" -f gazebo     2>/dev/null || true
+    pkill -9 -u "$USER" -f "as2_"         2>/dev/null || true
+    pkill -9 -u "$USER" -f "aerostack"    2>/dev/null || true
+    pkill -9 -u "$USER" -f "drone._interface" 2>/dev/null || true
+    pkill -9 -u "$USER" -f "MicroXRCEAgent" 2>/dev/null || true
+    pkill -9 -u "$USER" -f "micro.xrce"     2>/dev/null || true
+    pkill -9 -u "$USER" -f "uxr_agent"      2>/dev/null || true
+
     ros2 daemon stop  2>/dev/null || true
-    sleep 2
+    sleep 3
     ros2 daemon start 2>/dev/null || true
     rm -rf /tmp/ros*  2>/dev/null || true
     rm -rf /dev/shm/fastrtps_* /dev/shm/fastdds_* 2>/dev/null || true
 
     wait_until_clean
 
-    echo "[cleanup] Settling 15s..."
-    sleep 15
+    echo "[cleanup] Settling 45s for memory release..."
+    sleep 45
     echo "--- Cleanup done ---"
 }
 
