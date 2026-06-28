@@ -166,7 +166,42 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
 
     wait_until_clean
 
-    # Step 1: Launch Gazebo + Aerostack2 (world_swarm_2.yaml is already correct)
+    # Step 1: Activate 2-UAV swarm config, then launch Gazebo + Aerostack2
+    echo "[run $N] Writing 2-UAV world config to world_swarm_2.yaml..."
+    cat > "$PROJECT_GAZEBO/config/world_swarm_2.yaml" << 'YAML'
+world_name: "aspa135_m3"
+origin:
+    latitude: -66.28223056
+    longitude: 110.53892500
+    altitude: 30.19
+
+drones:
+  - model_type: "quadrotor_base"
+    model_name: "drone0"
+    flight_time: 60
+    xyz:
+      - 7.00
+      - 4.24
+      - 32.31
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone1"
+    flight_time: 60
+    xyz:
+      - 4.50
+      - 4.24
+      - 32.09
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+YAML
+    cp "$PROJECT_GAZEBO/config/world_swarm_2.yaml" "$PROJECT_GAZEBO/config/world_swarm.yaml"
+    echo "[run $N] Active drone names:"
+    grep "model_name" "$PROJECT_GAZEBO/config/world_swarm.yaml"
+
     echo "[run $N] Launching Gazebo + Aerostack2 (2-UAV config)..."
     (
         set +eu
