@@ -239,7 +239,7 @@ def main():
 
     # Traditional GA controls (kept explicit for benchmarking)
     ap.add_argument("--population_size", type=int, default=50)
-    ap.add_argument("--num_iterations", type=int, default=25000)
+    ap.add_argument("--num_iterations", type=int, default=50000)
 
     ap.add_argument("--save_fig_dir", default=None, help="If set, saves figures (PNG) into this directory")
     ap.add_argument("--no_plot", action="store_true", help="Disable plotting")
