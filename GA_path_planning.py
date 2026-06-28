@@ -5,7 +5,7 @@ def ga_3d_pathplanning(xyz):
     # Initialize the variables
     N = xyz.shape[0]  # Number of points
     popSize = 24  # Population size
-    numIter = int(1.5e5)  # Number of iterations
+    numIter = int(1e5)  # Number of iterations
 
     # Generate distance matrix in 3D
     a = np.meshgrid(np.arange(N), np.arange(N))
