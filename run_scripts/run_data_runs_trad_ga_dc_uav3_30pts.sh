@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Usage: ./run_data_runs_trad_ga_dc_uav3_30pts.sh <start_run> <end_run>
+# Example: ./run_data_runs_trad_ga_dc_uav3_30pts.sh 1 10
 START_RUN=${1:?Usage: $0 <start_run> <end_run>}
 END_RUN=${2:?Usage: $0 <start_run> <end_run>}
 
@@ -11,6 +12,7 @@ ROS2_SETUP="/opt/ros/humble/setup.bash"
 AS2_SETUP="$HOME/as2_harmonic_ws/install/setup.bash"
 ANTARCTICA_ENV="$PROJECT_GAZEBO/setup_antarctica_env.bash"
 
+# Tmux session names created by launch_as2.bash (one per drone namespace)
 TMUX_SESSIONS=("drone0" "drone1" "drone2")
 
 set +u
@@ -170,54 +172,13 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
 
     wait_until_clean
 
-    # Step 1: Write 3-UAV world config and launch Gazebo + Aerostack2
-    echo "[run $N] Writing 3-UAV world config to world_swarm_3.yaml..."
-    cat > "$PROJECT_GAZEBO/config/world_swarm_3.yaml" << 'YAML'
-world_name: "aspa135_m3"
-origin:
-    latitude: -66.28223056
-    longitude: 110.53892500
-    altitude: 30.19
-
-drones:
-  - model_type: "quadrotor_base"
-    model_name: "drone0"
-    flight_time: 60
-    xyz:
-      - 7.00
-      - 6.00
-      - 32.09
-    payload:
-      - model_type: "gps"
-        model_name: "gps"
-
-  - model_type: "quadrotor_base"
-    model_name: "drone1"
-    flight_time: 60
-    xyz:
-      - 5.50
-      - 4.00
-      - 32.20
-    payload:
-      - model_type: "gps"
-        model_name: "gps"
-
-  - model_type: "quadrotor_base"
-    model_name: "drone2"
-    flight_time: 60
-    xyz:
-      - 4.00
-      - 8.00
-      - 32.31
-    payload:
-      - model_type: "gps"
-        model_name: "gps"
-YAML
+    # Step 1: Activate 3-UAV swarm config, then launch Gazebo + Aerostack2
+    echo "[run $N] Activating 3-UAV world config (world_swarm_3.yaml → world_swarm.yaml)..."
     cp "$PROJECT_GAZEBO/config/world_swarm_3.yaml" "$PROJECT_GAZEBO/config/world_swarm.yaml"
     echo "[run $N] Active drone names:"
     grep "model_name" "$PROJECT_GAZEBO/config/world_swarm.yaml"
 
-    echo "[run $N] Launching Gazebo + Aerostack2 (3-UAV config)..."
+    echo "[run $N] Launching Gazebo + Aerostack2..."
     (
         set +eu
         source "$ROS2_SETUP"
