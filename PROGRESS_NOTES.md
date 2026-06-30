@@ -1,5 +1,5 @@
 # Experiment Progress Notes
-Last updated: 2026-06-26
+Last updated: 2026-06-30
 
 ---
 
@@ -238,9 +238,9 @@ cat experiment_commands/antarctica_deckga/traditional_ga_divide_conquer_2uavs_30
 
 ### Benchmark completion tracker
 ```
-Traditional GA D&C:   2-UAV: 30 _  60 _  90 _  120 _
-                      3-UAV: 30 _  60 _  90 _  120 _
-                      4-UAV: 30 _  60 _  90 _  120 _
+Traditional GA D&C:   2-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
+                      3-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
+                      4-UAV: 30 _  60 _  90 _  120 _   ← NEXT
                       5-UAV: 30 _  60 _  90 _  120 _
 
 Classical KMeans DEGA: 2-UAV: 30 _  60 _  90 _  120 _
@@ -248,6 +248,19 @@ Classical KMeans DEGA: 2-UAV: 30 _  60 _  90 _  120 _
                        4-UAV: 30 _  60 _  90 _  120 _
                        5-UAV: 30 _  60 _  90 _  120 _
 ```
+
+### Traditional GA D&C Results (completed configs)
+
+| Config | mean makespan (s) | mean total dist (m) | mean min pairwise (m) |
+|--------|:-----------------:|:-------------------:|:---------------------:|
+| 2-UAV 30pt  | —     | —       | — |
+| 2-UAV 60pt  | —     | —       | — |
+| 2-UAV 90pt  | 410.9 | —       | — |
+| 2-UAV 120pt | —     | —       | — |
+| 3-UAV 30pt  | —     | —       | — |
+| 3-UAV 60pt  | 161.0 | 575.5   | 1.195 |
+| 3-UAV 90pt  | 210.9 | 723.5   | 1.173 |
+| 3-UAV 120pt | 294.9 | 1047.0  | 1.085 |
 
 ---
 
