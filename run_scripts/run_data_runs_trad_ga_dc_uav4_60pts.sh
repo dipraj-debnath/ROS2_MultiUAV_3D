@@ -192,7 +192,7 @@ drones:
     xyz:
       - 7.00
       - 4.00
-      - 32.00
+      - 32.50
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -203,7 +203,7 @@ drones:
     xyz:
       - 7.00
       - 8.00
-      - 32.09
+      - 32.60
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -214,7 +214,7 @@ drones:
     xyz:
       - 4.00
       - 8.00
-      - 32.31
+      - 32.70
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -225,7 +225,7 @@ drones:
     xyz:
       - 4.00
       - 4.00
-      - 32.50
+      - 32.90
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -277,7 +277,7 @@ YAML
         --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
         --takeoff_margin 0.10 \
         --pre_arm_wait_s 5 \
-        --speed 1.9 \
+        --speed 1.5 \
         --wait_actions_s 10 \
         --init_wait_s 5 \
         --takeoff_settle_s 6 \
