@@ -177,7 +177,59 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
     wait_until_clean
 
     # Step 1: Activate 4-UAV swarm config, then launch Gazebo + Aerostack2
-    echo "[run $N] Activating 4-UAV world config (world_swarm_4.yaml → world_swarm.yaml)..."
+    echo "[run $N] Writing 4-UAV 30pt world config to world_swarm_4.yaml..."
+    cat > "$PROJECT_GAZEBO/config/world_swarm_4.yaml" << 'YAML'
+world_name: "aspa135_m3"
+origin:
+    latitude: -66.28223056
+    longitude: 110.53892500
+    altitude: 30.19
+
+drones:
+  - model_type: "quadrotor_base"
+    model_name: "drone0"
+    flight_time: 60
+    xyz:
+      - 4.00
+      - 8.00
+      - 32.31
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone1"
+    flight_time: 60
+    xyz:
+      - 7.00
+      - 6.00
+      - 32.09
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone2"
+    flight_time: 60
+    xyz:
+      - 4.00
+      - 4.00
+      - 32.20
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone3"
+    flight_time: 60
+    xyz:
+      - 7.00
+      - 4.00
+      - 32.50
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+YAML
     cp "$PROJECT_GAZEBO/config/world_swarm_4.yaml" "$PROJECT_GAZEBO/config/world_swarm.yaml"
     echo "[run $N] Active drone names:"
     grep "model_name" "$PROJECT_GAZEBO/config/world_swarm.yaml"
@@ -219,7 +271,7 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
         --namespaces drone0,drone1,drone2,drone3 \
         --coord_mode auto \
         --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
-        --zin_min 32.09 --zin_max 39.98 \
+        --zin_min 32.00 --zin_max 39.98 \
         --zout_min 3.80 --zout_max 6.80 \
         --z_base 32.2 \
         --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
@@ -228,7 +280,7 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
         --speed 1.9 \
         --wait_actions_s 10 \
         --init_wait_s 5 \
-        --takeoff_settle_s 3 \
+        --takeoff_settle_s 6 \
         --takeoff_sequential \
         --first_wp_wait \
         --ensure_reach \
