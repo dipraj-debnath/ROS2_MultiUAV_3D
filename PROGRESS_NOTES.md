@@ -240,7 +240,7 @@ cat experiment_commands/antarctica_deckga/traditional_ga_divide_conquer_2uavs_30
 ```
 Traditional GA D&C:   2-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
                       3-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
-                      4-UAV: 30 ✓  60 ✓  90 _  120 _   ← NEXT: 4-UAV 90pt
+                      4-UAV: 30 ✓  60 ✓  90 ✓  120 _   ← NEXT: 4-UAV 120pt
                       5-UAV: 30 _  60 _  90 _  120 _
 
 Classical KMeans DEGA: 2-UAV: 30 _  60 _  90 _  120 _
@@ -263,6 +263,7 @@ Classical KMeans DEGA: 2-UAV: 30 _  60 _  90 _  120 _
 | 3-UAV 120pt | 294.9  | 1047.0  | 1.085 |
 | 4-UAV 30pt  | 95.399 | 416.482 | 0.593 |
 | 4-UAV 60pt  | 143.237| 598.879 | 0.537 |
+| 4-UAV 90pt  | 189.415| 704.942 | 1.719 |
 
 ---
 
