@@ -9,7 +9,7 @@ drones:
     model_name: "drone0"
     flight_time: 60
     xyz:
-      - 7.00
+      - 4.00
       - 4.00
       - 32.50
     payload:
@@ -42,7 +42,7 @@ drones:
     model_name: "drone3"
     flight_time: 60
     xyz:
-      - 4.00
+      - 7.00
       - 4.00
       - 32.90
     payload:
