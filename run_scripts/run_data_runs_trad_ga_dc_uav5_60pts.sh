@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./run_data_runs_trad_ga_dc_uav3_60pts.sh <start_run> <end_run>
-# Example: ./run_data_runs_trad_ga_dc_uav3_60pts.sh 1 10
+# Usage: ./run_data_runs_trad_ga_dc_uav5_60pts.sh <start_run> <end_run>
+# Example: ./run_data_runs_trad_ga_dc_uav5_60pts.sh 1 10
 START_RUN=${1:?Usage: $0 <start_run> <end_run>}
 END_RUN=${2:?Usage: $0 <start_run> <end_run>}
 
@@ -12,12 +12,8 @@ ROS2_SETUP="/opt/ros/humble/setup.bash"
 AS2_SETUP="$HOME/as2_harmonic_ws/install/setup.bash"
 ANTARCTICA_ENV="$PROJECT_GAZEBO/setup_antarctica_env.bash"
 
-# Tmux session names created by launch_as2.bash (one per drone namespace)
-TMUX_SESSIONS=("drone0" "drone1" "drone2")
+TMUX_SESSIONS=("drone0" "drone1" "drone2" "drone3" "drone4")
 
-# Source ROS2 + AS2 into this shell so ros2 CLI works for action polling.
-# ROS2 setup scripts reference unset vars internally, so disable -u around them.
-# shellcheck disable=SC1090
 set +u
 source "$ROS2_SETUP"
 source "$AS2_SETUP"
@@ -27,6 +23,8 @@ LIVE_POSE_TOPICS=(
     "/drone0/ground_truth/pose"
     "/drone1/ground_truth/pose"
     "/drone2/ground_truth/pose"
+    "/drone3/ground_truth/pose"
+    "/drone4/ground_truth/pose"
 )
 
 REQUIRED_ACTIONS=(
@@ -42,27 +40,26 @@ REQUIRED_ACTIONS=(
     "/drone2/GoToBehavior"
     "/drone2/LandBehavior"
     "/drone2/FollowPathBehavior"
+    "/drone3/TakeoffBehavior"
+    "/drone3/GoToBehavior"
+    "/drone3/LandBehavior"
+    "/drone3/FollowPathBehavior"
+    "/drone4/TakeoffBehavior"
+    "/drone4/GoToBehavior"
+    "/drone4/LandBehavior"
+    "/drone4/FollowPathBehavior"
 )
 
-# ---------------------------------------------------------------------------
-# wait_for_ready: confirm drones are ACTUALLY alive before proceeding.
-# Requires BOTH:
-#   1) live pose messages flowing on /droneN/ground_truth/pose
-#   2) all required action servers advertised (including FollowPathBehavior)
-# Stale action names linger in the ROS graph after cleanup; the pose-topic
-# check is the definitive signal that the drone interfaces are truly up.
-# ---------------------------------------------------------------------------
 wait_for_ready() {
     local timeout_s=240
     local interval=5
     local elapsed=0
-    local echo_timeout=4   # seconds to wait for a single topic echo
+    local echo_timeout=4
     echo "[wait_for_ready] Waiting for live poses + all actions (timeout ${timeout_s}s)..."
     while true; do
         local all_ok=true
         local reason=""
 
-        # --- Check 1: fresh pose messages must be flowing ---
         for topic in "${LIVE_POSE_TOPICS[@]}"; do
             if ! timeout "$echo_timeout" ros2 topic echo --once "$topic" \
                     > /dev/null 2>&1; then
@@ -72,7 +69,6 @@ wait_for_ready() {
             fi
         done
 
-        # --- Check 2: all action servers must be advertised ---
         if $all_ok; then
             local action_list
             action_list=$(ros2 action list 2>/dev/null || true)
@@ -101,9 +97,6 @@ wait_for_ready() {
     done
 }
 
-# ---------------------------------------------------------------------------
-# wait_until_clean: block until gz/gazebo/drone-interface procs are gone
-# ---------------------------------------------------------------------------
 wait_until_clean() {
     local timeout_s=30
     local interval=2
@@ -132,63 +125,49 @@ wait_until_clean() {
     done
 }
 
-# ---------------------------------------------------------------------------
-# do_cleanup: full teardown of Gazebo, AS2, tmux sessions, ROS2 daemon
-# ---------------------------------------------------------------------------
 do_cleanup() {
     local n=$1
     echo "--- Cleanup for run $n ---"
 
-    # stop.bash (Aerostack2 graceful stop)
     (cd "$PROJECT_GAZEBO" && ./stop.bash) 2>/dev/null || true
 
-    # Kill tmux sessions created by launch_as2.bash (named after drone namespaces)
     for session in "${TMUX_SESSIONS[@]}"; do
         tmux kill-session -t "$session" 2>/dev/null || true
     done
-    # Belt-and-suspenders: kill-server wipes any stray sessions
     tmux kill-server 2>/dev/null || true
 
-    # Kill experiment Python processes
     pkill -u "$USER" -f "deckga_execute_antarctica.py"      2>/dev/null || true
     pkill -u "$USER" -f "rviz_paths_node_antarctica.py"     2>/dev/null || true
     pkill -u "$USER" -f "drone_pairwise_distance_logger.py" 2>/dev/null || true
 
-    # Kill RViz
     pkill -u "$USER" -f rviz2 2>/dev/null || true
 
-    # Kill Gazebo processes
     pkill -u "$USER" -f "gz sim"   2>/dev/null || true
     pkill -u "$USER" -x gzserver   2>/dev/null || true
     pkill -u "$USER" -x gzclient   2>/dev/null || true
     pkill -u "$USER" -f gazebo     2>/dev/null || true
 
-    # Kill Aerostack2 / AS2 node processes
     pkill -u "$USER" -f "as2_"         2>/dev/null || true
     pkill -u "$USER" -f "aerostack"    2>/dev/null || true
 
-    # Kill micro-XRCE DDS agent (used by PX4/AS2 bridge if present)
     pkill -u "$USER" -f "MicroXRCEAgent" 2>/dev/null || true
     pkill -u "$USER" -f "micro.xrce"     2>/dev/null || true
     pkill -u "$USER" -f "uxr_agent"      2>/dev/null || true
 
-    # Reset ROS2 daemon and clear shared memory
     ros2 daemon stop  2>/dev/null || true
     sleep 2
     ros2 daemon start 2>/dev/null || true
     rm -rf /tmp/ros*  2>/dev/null || true
     rm -rf /dev/shm/fastrtps_* /dev/shm/fastdds_* 2>/dev/null || true
+    rm -rf ~/.gz/sim ~/.gz/rendering 2>/dev/null || true
 
-    # Wait until Gazebo/drone processes are actually gone
     wait_until_clean
 
-    # Final settle before the caller continues
-    echo "[cleanup] Settling 15s..."
-    sleep 15
+    echo "[cleanup] Settling 65s..."
+    sleep 65
     echo "--- Cleanup done ---"
 }
 
-# Kill Gazebo and logger if the script exits for any reason
 trap 'echo "[trap] Script exiting — running emergency cleanup..."; do_cleanup "trap"' EXIT INT TERM
 
 cd "$REPO"
@@ -201,64 +180,115 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
     echo "=========================================="
     echo ""
 
-    # ------------------------------------------------------------------
-    # Pre-flight: confirm environment is clean before launching
-    # ------------------------------------------------------------------
     wait_until_clean
 
-    # ------------------------------------------------------------------
-    # Step 1: Activate 3-UAV swarm config, then launch Gazebo + Aerostack2
-    # ------------------------------------------------------------------
-    echo "[run $N] Activating 3-UAV world config (world_swarm_3.yaml → world_swarm.yaml)..."
-    cp "$PROJECT_GAZEBO/config/world_swarm_3.yaml" "$PROJECT_GAZEBO/config/world_swarm.yaml"
+    # Step 1: Activate 5-UAV swarm config, then launch Gazebo + Aerostack2
+    echo "[run $N] Writing 5-UAV 60pt world config to world_swarm_5.yaml..."
+    cat > "$PROJECT_GAZEBO/config/world_swarm_5.yaml" << 'YAML'
+world_name: "aspa135_m3"
+origin:
+    latitude: -66.28223056
+    longitude: 110.53892500
+    altitude: 30.19
+
+drones:
+  - model_type: "quadrotor_base"
+    model_name: "drone0"
+    flight_time: 60
+    xyz:
+      - 8.00
+      - 4.50
+      - 32.60
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone1"
+    flight_time: 60
+    xyz:
+      - 8.00
+      - 8.00
+      - 32.70
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone2"
+    flight_time: 60
+    xyz:
+      - 4.50
+      - 8.00
+      - 32.80
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone3"
+    flight_time: 60
+    xyz:
+      - 4.50
+      - 2.50
+      - 32.90
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone4"
+    flight_time: 60
+    xyz:
+      - 6.00
+      - 5.00
+      - 32.99
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+YAML
+    cp "$PROJECT_GAZEBO/config/world_swarm_5.yaml" "$PROJECT_GAZEBO/config/world_swarm.yaml"
     echo "[run $N] Active drone names:"
     grep "model_name" "$PROJECT_GAZEBO/config/world_swarm.yaml"
 
     echo "[run $N] Launching Gazebo + Aerostack2..."
     (
-        set +eu  # tmux attach-session fails in non-interactive shell — OK
-        # shellcheck disable=SC1090
+        set +eu
         source "$ROS2_SETUP"
         source "$AS2_SETUP"
         source "$ANTARCTICA_ENV"
         cd "$PROJECT_GAZEBO"
         ./launch_as2.bash -m
     ) &
-    echo "[run $N] launch_as2.bash started in background. Sleeping 45s for tmux sessions to stabilise..."
-    sleep 45
+    echo "[run $N] launch_as2.bash started in background. Sleeping 95s for tmux sessions to stabilise..."
+    sleep 95
 
-    # ------------------------------------------------------------------
-    # Step 2: Wait until drones are truly ready (live poses + all actions)
-    # ------------------------------------------------------------------
+    # Step 2: Wait until drones are ready
     wait_for_ready
 
-    # ------------------------------------------------------------------
-    # Step 3: Start pairwise distance logger in background
-    # ------------------------------------------------------------------
+    # Step 3: Start pairwise distance logger
     echo "[run $N] Starting pairwise distance logger..."
     python3 deckga_ros2/drone_pairwise_distance_logger.py \
-        --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose \
-        --names drone0,drone1,drone2 \
+        --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose,/drone3/ground_truth/pose,/drone4/ground_truth/pose \
+        --names drone0,drone1,drone2,drone3,drone4 \
         --msg_type pose_stamped \
         --rate_hz 10 \
         --print_every_s 1.0 \
         --log_dir results_antarctica_csv \
-        --run_tag "ex${N}_60pts_uav3_trad_ga_dc_pairwise_run_${N}" &
+        --run_tag "ex${N}_60pts_uav5_trad_ga_dc_pairwise_run_${N}" &
     LOGGER_PID=$!
     echo "[run $N] Pairwise logger started (PID $LOGGER_PID). Sleeping 3s..."
     sleep 3
 
-    # ------------------------------------------------------------------
-    # Step 4: Run Traditional GA D&C executor (foreground — blocks until mission done)
-    # ------------------------------------------------------------------
-    echo "[run $N] Running Traditional GA D&C executor (ex${N} PKL)..."
+    # Step 4: Run executor (foreground — blocks until mission done)
+    echo "[run $N] Running executor (Traditional GA D&C, ex${N} PKL)..."
     set +e
     python3 deckga_ros2/deckga_execute_antarctica.py \
-        --deckga_pkl "deckga_ros2/data/traditional_ga_divide_conquer_output_antarctica_60_uav3_ex${N}.pkl" \
-        --namespaces drone0,drone1,drone2 \
+        --deckga_pkl "deckga_ros2/data/traditional_ga_divide_conquer_output_antarctica_60_uav5_ex${N}.pkl" \
+        --namespaces drone0,drone1,drone2,drone3,drone4 \
         --coord_mode auto \
         --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
-        --zin_min 32.09 --zin_max 39.97 \
+        --zin_min 32.60 --zin_max 39.97 \
         --zout_min 3.80 --zout_max 6.80 \
         --z_base 32.2 \
         --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
@@ -267,13 +297,13 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
         --speed 1.9 \
         --wait_actions_s 10 \
         --init_wait_s 5 \
-        --takeoff_settle_s 3 \
+        --takeoff_settle_s 6 \
         --takeoff_sequential \
         --first_wp_wait \
         --ensure_reach \
         --wp_settle_s 0.3 \
         --log_dir results_antarctica_csv \
-        --run_tag "ex${N}_60pts_uav3_trad_ga_dc_run_${N}"
+        --run_tag "ex${N}_60pts_uav5_trad_ga_dc_run_${N}"
     EXEC_EXIT=$?
     set -e
 
@@ -289,16 +319,12 @@ for N in $(seq "$START_RUN" "$END_RUN"); do
         echo "[run $N] Executor finished successfully (exit 0)."
     fi
 
-    # ------------------------------------------------------------------
-    # Step 5: SIGINT pairwise logger so it flushes its summary CSV
-    # ------------------------------------------------------------------
+    # Step 5: SIGINT pairwise logger to flush summary CSV
     echo "[run $N] Sending SIGINT to pairwise logger (PID $LOGGER_PID) to flush CSV..."
     kill -SIGINT "$LOGGER_PID" 2>/dev/null || true
     sleep 5
 
-    # ------------------------------------------------------------------
-    # Step 6: Full cleanup — kill Gazebo, tmux, AS2, reset daemon
-    # ------------------------------------------------------------------
+    # Step 6: Full cleanup
     do_cleanup "$N"
 
     echo ""

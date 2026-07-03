@@ -1,6 +1,6 @@
 import numpy as np
 
-def basic_ga_path_planning(cluster_points, population_size=50, num_iterations=100000):
+def basic_ga_path_planning(cluster_points, population_size=50, num_iterations=40000):
     """
     Basic Genetic Algorithm to optimize the path for a given cluster of waypoints.
     
