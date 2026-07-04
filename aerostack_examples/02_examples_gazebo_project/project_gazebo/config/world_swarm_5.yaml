@@ -9,9 +9,9 @@ drones:
     model_name: "drone0"
     flight_time: 60
     xyz:
-      - 8.00
       - 4.50
-      - 32.60
+      - 2.50
+      - 32.90
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -42,9 +42,9 @@ drones:
     model_name: "drone3"
     flight_time: 60
     xyz:
+      - 8.00
       - 4.50
-      - 2.50
-      - 32.90
+      - 32.60
     payload:
       - model_type: "gps"
         model_name: "gps"

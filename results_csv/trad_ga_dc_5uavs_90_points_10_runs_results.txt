@@ -1,0 +1,210 @@
+Traditional GA D&C | 5 UAVs | 90 Waypoints | 10 Runs Results
+antarctica_aspa135_m3 | start_points: 4.50,2.50,32.90 ; 8.00,8.00,32.70 ; 4.50,8.00,32.80 ; 8.00,4.50,32.60 ; 6.00,5.00,32.99
+===========================================================================
+
+=== Run 1 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 158.800
+UAV 1: 152.243
+UAV 2: 134.684
+UAV 3: 143.953
+UAV 4: 118.695
+Total optimized: 708.374909265022
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 343.524 s
+Total Time            : 343.524 s
+
+=== Run 2 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 159.633
+UAV 1: 151.635
+UAV 2: 127.296
+UAV 3: 148.294
+UAV 4: 126.311
+Total optimized: 713.1683262275465
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 337.108 s
+Total Time            : 337.108 s
+
+=== Run 3 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 171.272
+UAV 1: 157.696
+UAV 2: 131.298
+UAV 3: 141.926
+UAV 4: 130.527
+Total optimized: 732.7187723627633
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 335.468 s
+Total Time            : 335.468 s
+
+=== Run 4 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 169.234
+UAV 1: 152.813
+UAV 2: 135.457
+UAV 3: 131.802
+UAV 4: 127.834
+Total optimized: 717.1394917321247
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 335.272 s
+Total Time            : 335.272 s
+
+=== Run 5 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 171.284
+UAV 1: 159.008
+UAV 2: 127.778
+UAV 3: 146.749
+UAV 4: 135.056
+Total optimized: 739.8756140580592
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 332.196 s
+Total Time            : 332.196 s
+
+=== Run 6 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 173.719
+UAV 1: 157.038
+UAV 2: 133.666
+UAV 3: 143.909
+UAV 4: 122.573
+Total optimized: 730.904433007188
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 332.424 s
+Total Time            : 332.424 s
+
+=== Run 7 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 160.410
+UAV 1: 150.271
+UAV 2: 131.802
+UAV 3: 141.744
+UAV 4: 122.815
+Total optimized: 707.0420531325176
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 335.608 s
+Total Time            : 335.608 s
+
+=== Run 8 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 167.599
+UAV 1: 153.756
+UAV 2: 125.995
+UAV 3: 146.185
+UAV 4: 119.285
+Total optimized: 712.8195251606745
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 335.912 s
+Total Time            : 335.912 s
+
+=== Run 9 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 165.259
+UAV 1: 159.456
+UAV 2: 130.598
+UAV 3: 139.745
+UAV 4: 133.422
+Total optimized: 728.4805041526087
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 337.872 s
+Total Time            : 337.872 s
+
+=== Run 10 / 10 ===
+--- Raw Lengths (start + assigned points, shifted) ---
+UAV 0: 189.510
+UAV 1: 233.525
+UAV 2: 271.078
+UAV 3: 290.630
+UAV 4: 240.801
+Total raw: 1225.5439194783905
+--- Optimized Lengths (Traditional GA, shifted) ---
+UAV 0: 158.420
+UAV 1: 156.570
+UAV 2: 130.007
+UAV 3: 153.632
+UAV 4: 130.878
+Total optimized: 729.5077671466246
+--- Timing Summary ---
+Divide & Conquer Time : 0.000 s
+Traditional GA Time   : 332.568 s
+Total Time            : 332.568 s
+
+===========================================================================
+AGGREGATE SUMMARY (10 runs)
+Total optimized path length : min=707.042  max=739.876  mean=722.003
+GA Time range               : 332.196 s – 343.524 s
+GA Time mean                : 335.795 s
+Per-UAV mean optimized path : UAV0=165.563  UAV1=155.049  UAV2=130.858  UAV3=143.794  UAV4=126.740
