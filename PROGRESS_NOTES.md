@@ -1,5 +1,5 @@
 # Experiment Progress Notes
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ---
 
@@ -243,7 +243,7 @@ Traditional GA D&C:   2-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
                       4-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
                       5-UAV: 30 ✓  60 ✓  90 ✓  120 ✓  ← ALL DONE
 
-Classical KMeans DEGA: 2-UAV: 30 ✓  60 _  90 _  120 _   ← NEXT (2-UAV 60pt)
+Classical KMeans DEGA: 2-UAV: 30 ✓  60 ✓  90 _  120 _   ← NEXT (2-UAV 90pt)
                        3-UAV: 30 _  60 _  90 _  120 _
                        4-UAV: 30 _  60 _  90 _  120 _
                        5-UAV: 30 _  60 _  90 _  120 _
@@ -275,6 +275,7 @@ Classical KMeans DEGA: 2-UAV: 30 ✓  60 _  90 _  120 _   ← NEXT (2-UAV 60pt)
 | Config | mean planned_makespan (s) | mean mission_makespan (s) | mean total dist (m) | mean min pairwise (m) |
 |--------|:-------------------------:|:-------------------------:|:-------------------:|:---------------------:|
 | 2-UAV 30pt  | 83.718 | 115.390 | 277.580 | 0.740 |
+| 2-UAV 60pt  | 98.481 | 165.424 | 351.167 | 2.482 |
 
 ---
 
