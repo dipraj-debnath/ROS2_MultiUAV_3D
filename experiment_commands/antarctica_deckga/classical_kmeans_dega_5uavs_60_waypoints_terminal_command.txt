@@ -1,0 +1,292 @@
+Antarctica 60 waypoints — Classical KMeans DEGA — 5 drones
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+ros2 daemon stop || true
+rm -rf /dev/shm/fastrtps_* /dev/shm/fastdds_* 2>/dev/null || true
+ros2 daemon start
+
+Terminal 0 — Activate 5-drone swarm config
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+cat > config/world_swarm_5.yaml << 'EOF'
+world_name: "aspa135_m3"
+origin:
+    latitude: -66.28223056
+    longitude: 110.53892500
+    altitude: 30.19
+
+drones:
+  - model_type: "quadrotor_base"
+    model_name: "drone0"
+    flight_time: 60
+    xyz:
+      - 8.00
+      - 4.50
+      - 32.60
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone1"
+    flight_time: 60
+    xyz:
+      - 8.00
+      - 8.00
+      - 32.70
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone2"
+    flight_time: 60
+    xyz:
+      - 4.50
+      - 8.00
+      - 32.80
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone3"
+    flight_time: 60
+    xyz:
+      - 4.50
+      - 2.50
+      - 32.90
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+
+  - model_type: "quadrotor_base"
+    model_name: "drone4"
+    flight_time: 60
+    xyz:
+      - 6.00
+      - 5.00
+      - 32.99
+    payload:
+      - model_type: "gps"
+        model_name: "gps"
+EOF
+
+cp config/world_swarm_5.yaml config/world_swarm.yaml
+
+echo "=== Active world_swarm.yaml drone names ==="
+grep -n "model_name" config/world_swarm.yaml
+
+echo "=== Active world_swarm.yaml start positions ==="
+grep -A5 -n "xyz:" config/world_swarm.yaml
+
+Terminal 1 — Convert TXT to PKL
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+ls -la data/points/antarctica_aspa135_m3_60_points.txt
+head -n 5 data/points/antarctica_aspa135_m3_60_points.txt
+
+python3 - << 'PY'
+import numpy as np
+import pickle
+from pathlib import Path
+
+txt_in = Path("data/points/antarctica_aspa135_m3_60_points.txt")
+pkl_out = Path("data/points/antarctica_aspa135_m3_60_points.pkl")
+
+pts = np.genfromtxt(txt_in, dtype=float, names=True, delimiter=None)
+xyz = np.vstack([pts["x"], pts["y"], pts["z"]]).T
+
+print("Loaded:", txt_in.resolve())
+print("Shape :", xyz.shape)
+
+mn = xyz.min(axis=0)
+mx = xyz.max(axis=0)
+print(f"Ranges: x[{mn[0]:.2f},{mx[0]:.2f}] y[{mn[1]:.2f},{mx[1]:.2f}] z[{mn[2]:.2f},{mx[2]:.2f}]")
+
+pkl_out.parent.mkdir(parents=True, exist_ok=True)
+with pkl_out.open("wb") as f:
+    pickle.dump(xyz, f)
+
+print("Saved:", pkl_out.resolve())
+PY
+
+Terminal 2 — Run Classical KMeans DEGA for 5 drones
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+python3 "DEGA_Classical_Kmeans/DEGA_Classical_Kmeans.py" \
+  --points_pkl "data/points/antarctica_aspa135_m3_60_points.pkl" \
+  --num_uavs 5 \
+  --start_points="8.00,4.50,32.60;8.00,8.00,32.70;4.50,8.00,32.80;4.50,2.50,32.90;6.00,5.00,32.99" \
+  --out_pkl "deckga_ros2/data/classical_kmeans_dega_output_antarctica_60_uav5_ex1.pkl" \
+  --save_fig_dir "results_antarctica"
+
+# Sanity check output PKL
+python3 - << 'PY'
+import pickle
+import numpy as np
+
+p = "deckga_ros2/data/classical_kmeans_dega_output_antarctica_60_uav5_ex1.pkl"
+d = pickle.load(open(p, "rb"))
+
+print("PKL:", p)
+print("Keys:", sorted(d.keys()))
+for i, P in enumerate(d["deckga_paths"]):
+    P = np.asarray(P)
+    print(f"UAV{i}: n={len(P)} first={P[0]} last={P[-1]}")
+PY
+
+Terminal 3 — Launch Aerostack2 + Gazebo swarm
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+source ./setup_antarctica_env.bash
+
+./launch_as2.bash -m
+
+Leave this terminal running.
+
+Terminal 4 — Ground station / RViz
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+source ./setup_antarctica_env.bash
+
+./launch_ground_station.bash -m -t -v
+
+Leave this terminal running.
+
+Terminal 5 — Quick sanity check for 5 drones
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+echo "=== Drone nodes ==="
+ros2 node list | egrep "drone0|drone1|drone2|drone3|drone4" | head -n 200
+
+echo "=== Actions for drone0, drone1, drone2, drone3, drone4 ==="
+ros2 action list | sort | egrep "/drone[0-4]/(TakeoffBehavior|GoToBehavior|LandBehavior|FollowPathBehavior)" || true
+
+Terminal 6 — Publish 5-drone Classical KMeans DEGA paths in RViz
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/rviz_paths_node_antarctica.py \
+  --deckga_pkl deckga_ros2/data/classical_kmeans_dega_output_antarctica_60_uav5_ex1.pkl \
+  --num_uavs 5 \
+  --coord_mode auto \
+  --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
+  --zin_min 32.60 --zin_max 39.97 \
+  --zout_min 3.80 --zout_max 6.80 \
+  --z_base 32.2 \
+  --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
+  --line_width 0.25 --wp_scale 0.45
+
+Leave this terminal running.
+
+Terminal 7 — Pairwise distance logger for 5 drones
+
+Start this before executing the flight.
+
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/drone_pairwise_distance_logger.py \
+  --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose,/drone3/ground_truth/pose,/drone4/ground_truth/pose \
+  --names drone0,drone1,drone2,drone3,drone4 \
+  --msg_type pose_stamped \
+  --rate_hz 10 \
+  --print_every_s 1.0 \
+  --log_dir results_antarctica_csv \
+  --run_tag ex1_60pts_uav5_classical_kmeans_dega_pairwise_run_1
+
+Leave this running. After the mission finishes, press Ctrl+C to save the summary CSV.
+
+Terminal 8 — Execute 5-drone flight
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+source /opt/ros/humble/setup.bash
+source ~/as2_harmonic_ws/install/setup.bash
+
+python3 deckga_ros2/deckga_execute_antarctica.py \
+  --deckga_pkl deckga_ros2/data/classical_kmeans_dega_output_antarctica_60_uav5_ex1.pkl \
+  --namespaces drone0,drone1,drone2,drone3,drone4 \
+  --coord_mode auto \
+  --xy_scale 1.0 --xy_center_x 0.0 --xy_center_y 0.0 \
+  --zin_min 32.60 --zin_max 39.97 \
+  --zout_min 3.80 --zout_max 6.80 \
+  --z_base 32.2 \
+  --clamp_xy --x_min -40 --x_max 40 --y_min -40 --y_max 40 \
+  --takeoff_margin 0.10 \
+  --pre_arm_wait_s 5 \
+  --speed 1.9 \
+  --wait_actions_s 10 \
+  --init_wait_s 5 \
+  --takeoff_settle_s 3 \
+  --takeoff_sequential \
+  --first_wp_wait \
+  --ensure_reach \
+  --wp_settle_s 0.3 \
+  --log_dir results_antarctica_csv \
+  --run_tag ex1_60pts_uav5_classical_kmeans_dega_run_1
+
+Terminal 9 — Check output CSV files
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D
+
+LATEST_EXEC=$(ls -t results_antarctica_csv/*60pts_uav5_classical_kmeans_dega_run_1*summary.csv | head -n 1)
+echo "$LATEST_EXEC"
+cat "$LATEST_EXEC"
+
+LATEST_PAIRWISE=$(ls -t results_antarctica_csv/*60pts_uav5_classical_kmeans_dega_pairwise_run_1*summary.csv | head -n 1)
+echo "$LATEST_PAIRWISE"
+cat "$LATEST_PAIRWISE"
+
+Terminal 10 — Stop / clean if needed
+cd ~/Documents/GitHub/ROS2_MultiUAV_3D/aerostack_examples/02_examples_gazebo_project/project_gazebo
+
+./stop.bash || true
+
+pkill -u "$USER" -f "deckga_execute_antarctica.py" || true
+pkill -u "$USER" -f "rviz_paths_node_antarctica.py" || true
+pkill -u "$USER" -f "drone_pairwise_distance_logger.py" || true
+pkill -u "$USER" -f rviz2 || true
+pkill -u "$USER" -f "gz sim" || true
+pkill -u "$USER" -f gzserver || true
+pkill -u "$USER" -f gzclient || true
+
+ros2 daemon stop || true
+ros2 daemon start || true
+rm -rf /tmp/ros* || true
+
+Important checks before running
+
+For 5 drones, these must match:
+
+world_swarm_5.yaml:
+  drone0 = 8.00, 4.50, 32.60
+  drone1 = 8.00, 8.00, 32.70
+  drone2 = 4.50, 8.00, 32.80
+  drone3 = 4.50, 2.50, 32.90
+  drone4 = 6.00, 5.00, 32.99
+
+DEGA_Classical_Kmeans.py:
+  --num_uavs 5
+  --start_points="8.00,4.50,32.60;8.00,8.00,32.70;4.50,8.00,32.80;4.50,2.50,32.90;6.00,5.00,32.99"
+  --zin_min 32.60 --zin_max 39.97
+
+deckga_execute_antarctica.py:
+  --namespaces drone0,drone1,drone2,drone3,drone4
+
+drone_pairwise_distance_logger.py:
+  --topics /drone0/ground_truth/pose,/drone1/ground_truth/pose,/drone2/ground_truth/pose,/drone3/ground_truth/pose,/drone4/ground_truth/pose
+  --names drone0,drone1,drone2,drone3,drone4
