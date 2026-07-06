@@ -1,5 +1,5 @@
 # Experiment Progress Notes
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ---
 
@@ -245,8 +245,8 @@ Traditional GA D&C:   2-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
 
 Classical KMeans DEGA: 2-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
                        3-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
-                       4-UAV: 30 ✓  60 ✓  90 ✓  120 _   ← NEXT (4-UAV 120pt)
-                       5-UAV: 30 _  60 _  90 _  120 _
+                       4-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
+                       5-UAV: 30 _  60 _  90 _  120 _   ← NEXT (5-UAV 30pt)
 ```
 
 ### Traditional GA D&C Results (completed configs)
@@ -285,6 +285,7 @@ Classical KMeans DEGA: 2-UAV: 30 ✓  60 ✓  90 ✓  120 ✓
 | 4-UAV 30pt  |  55.156 |  80.223 | 355.840 | 0.377 |
 | 4-UAV 60pt  |  68.317 | 119.690 | 392.980 | 1.281 |
 | 4-UAV 90pt  |  78.303 | 153.452 | 427.912 | 0.887 |
+| 4-UAV 120pt |  79.417 | 160.845 | 453.800 | 0.080 |
 
 ---
 
