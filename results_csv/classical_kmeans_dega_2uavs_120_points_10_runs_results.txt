@@ -1,0 +1,150 @@
+Classical KMeans DEGA | 2 UAVs | 120 Waypoints | 10 Runs Results
+antarctica_aspa135_m3 | start_points: 7.00,4.24,32.31 ; 4.50,4.24,32.09
+===========================================================================
+
+=== Run 1 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.002 s
+Classical KMeans GA Time  : 89.649 s
+Total Time                : 89.651 s
+
+=== Run 2 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.003 s
+Classical KMeans GA Time  : 89.329 s
+Total Time                : 89.332 s
+
+=== Run 3 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.003 s
+Classical KMeans GA Time  : 88.840 s
+Total Time                : 88.843 s
+
+=== Run 4 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.003 s
+Classical KMeans GA Time  : 89.898 s
+Total Time                : 89.901 s
+
+=== Run 5 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.002 s
+Classical KMeans GA Time  : 90.055 s
+Total Time                : 90.058 s
+
+=== Run 6 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.002 s
+Classical KMeans GA Time  : 89.281 s
+Total Time                : 89.284 s
+
+=== Run 7 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.003 s
+Classical KMeans GA Time  : 89.210 s
+Total Time                : 89.213 s
+
+=== Run 8 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.002 s
+Classical KMeans GA Time  : 87.271 s
+Total Time                : 87.274 s
+
+=== Run 9 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.003 s
+Classical KMeans GA Time  : 87.466 s
+Total Time                : 87.468 s
+
+=== Run 10 / 10 ===
+UAV 0: 267.685
+UAV 1: 1843.769
+Total raw: 2111.454575656088
+UAV 0: 175.995
+UAV 1: 361.825
+Total optimized: 537.8198865808288
+UAV 0: 91.690
+UAV 1: 1481.945
+--- Timing Summary ---
+KMeans Cluster Time       : 0.003 s
+Classical KMeans GA Time  : 87.907 s
+Total Time                : 87.909 s
+
+===========================================================================
+AGGREGATE SUMMARY (10 runs)
+Total optimized path length : 537.820 (identical across all runs)
+GA Time range               : 87.271 s – 90.055 s
+GA Time mean                : 88.891 s
+Per-UAV mean optimized path : UAV0=175.995  UAV1=361.825
