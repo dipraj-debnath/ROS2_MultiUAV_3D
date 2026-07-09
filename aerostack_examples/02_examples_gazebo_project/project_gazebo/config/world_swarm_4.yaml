@@ -11,7 +11,7 @@ drones:
     xyz:
       - 7.00
       - 8.00
-      - 32.10
+      - 32.09
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -33,7 +33,7 @@ drones:
     xyz:
       - 4.00
       - 8.00
-      - 32.60
+      - 32.31
     payload:
       - model_type: "gps"
         model_name: "gps"
@@ -44,7 +44,7 @@ drones:
     xyz:
       - 7.00
       - 4.00
-      - 32.70
+      - 32.50
     payload:
       - model_type: "gps"
         model_name: "gps"

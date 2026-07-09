@@ -13,8 +13,8 @@ UAV 1: 155.028
 Total optimized: 377.4108641485906
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 26.105 s
-Total Time            : 26.106 s
+Traditional GA Time   : 52.210 s
+Total Time            : 52.210 s
 
 === Run 2 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -27,8 +27,8 @@ UAV 1: 165.345
 Total optimized: 395.2802500806391
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 27.185 s
-Total Time            : 27.185 s
+Traditional GA Time   : 54.370 s
+Total Time            : 54.370 s
 
 === Run 3 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -41,8 +41,8 @@ UAV 1: 167.875
 Total optimized: 383.31477436501643
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 26.948 s
-Total Time            : 26.948 s
+Traditional GA Time   : 53.896 s
+Total Time            : 53.896 s
 
 === Run 4 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -55,8 +55,8 @@ UAV 1: 146.201
 Total optimized: 352.6318932362095
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 27.219 s
-Total Time            : 27.219 s
+Traditional GA Time   : 54.438 s
+Total Time            : 54.438 s
 
 === Run 5 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -69,8 +69,8 @@ UAV 1: 170.698
 Total optimized: 394.74378612940404
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 27.464 s
-Total Time            : 27.464 s
+Traditional GA Time   : 54.928 s
+Total Time            : 54.928 s
 
 === Run 6 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -83,8 +83,8 @@ UAV 1: 141.752
 Total optimized: 349.61973063867856
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 26.877 s
-Total Time            : 26.877 s
+Traditional GA Time   : 53.754 s
+Total Time            : 53.754 s
 
 === Run 7 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -97,8 +97,8 @@ UAV 1: 155.276
 Total optimized: 355.27639699113286
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 27.940 s
-Total Time            : 27.940 s
+Traditional GA Time   : 55.880 s
+Total Time            : 55.880 s
 
 === Run 8 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -111,8 +111,8 @@ UAV 1: 163.672
 Total optimized: 384.27913064635294
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 27.925 s
-Total Time            : 27.925 s
+Traditional GA Time   : 55.850 s
+Total Time            : 55.850 s
 
 === Run 9 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -125,8 +125,8 @@ UAV 1: 156.035
 Total optimized: 394.25554745153056
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 28.710 s
-Total Time            : 28.710 s
+Traditional GA Time   : 57.420 s
+Total Time            : 57.420 s
 
 === Run 10 / 10 ===
 --- Raw Lengths (start + assigned points, shifted) ---
@@ -139,12 +139,12 @@ UAV 1: 161.882
 Total optimized: 375.377737517396
 --- Timing Summary ---
 Divide & Conquer Time : 0.000 s
-Traditional GA Time   : 27.281 s
-Total Time            : 27.281 s
+Traditional GA Time   : 54.562 s
+Total Time            : 54.562 s
 
 ===========================================================================
 AGGREGATE SUMMARY (10 runs)
 Total optimized path length : min=349.620  max=395.280  mean=376.219
-GA Time range               : 26.105 s – 28.710 s
-GA Time mean                : 27.365 s
+GA Time range               : 52.210 s – 57.420 s
+GA Time mean                : 54.730 s
 Per-UAV mean optimized path : UAV0=217.842  UAV1=158.377
